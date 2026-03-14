@@ -16,7 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from alienstocksim import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('', views.global_action, name='global'),
+    path('login', views.login_action, name='login'),
+    path('register', views.register_action, name='register'),
 ]
