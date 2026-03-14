@@ -1,0 +1,21 @@
+.scrolling_container {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+.scrolling_text {
+    display: inline-block;
+    animation: sideScroll 10s linear infinite;
+}
+
+
+@keyframes sideScroll {
+    0% {
+        transform: translateX(100vw);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
