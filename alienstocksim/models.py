@@ -30,7 +30,7 @@ class StockEntry(models.Model):
     class Meta:
         #This meta class is important because it prevents duplicate entries
         #i.e. (Leyu, "CMPA") can't be created if ("Leyu", "CMPA") already exists in DB
-        unique_entry = ("profile", "company")
+        unique_together = ("profile", "company")
 
         #To get a stock and its quantity from a user, do
         #holding, created = StockEntry.get_or_create(profile=profile, company = "<company>")

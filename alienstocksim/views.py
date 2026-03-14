@@ -60,7 +60,12 @@ def register_action(request):
                             password=form.cleaned_data['password'])
 
     login(request, new_user)
-    return redirect('global')
+    return redirect('home')
+
+@login_required
+def home_action(request):
+    context = {}
+    return render(request, 'alienstocksim/home.html', context)
 
 @login_required
 def logout_action(request):
