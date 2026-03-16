@@ -7,9 +7,35 @@
         <title> Home </title>
     </head>
     <body>
-        <div class = "scrolling_container">
-            <div class = "scrolling_text">
-                BREAKING NEWS: THIS IS THE HOME PAGE!
+        <header class="breaking_news_section">
+            <div class="breaking_news_top">
+                <div class="scrolling_container">
+                    <div class="scrolling_text">
+                        BREAKING NEWS: THIS IS THE HOME PAGE!
+                    </div>
+                </div>
             </div>
+            <nav class="top_nav">
+                <a href="{% url 'profile' %}" class="profile_tab">Profile</a>
+            </nav>
+        </header>
+        <div class="home_layout">
+            <aside class="leaderboard_sidebar">
+                <h2 class="leaderboard_title">Leaderboard</h2>
+                <p class="leaderboard_subtitle">Ranked by net worth</p>
+                <div class="leaderboard_list">
+                    {% for row in leaderboard %}
+                    <div class="leaderboard_row {% if row.is_current %}current_user{% endif %}">
+                        <span class="rank">{{ row.rank }}.</span>
+                        <a href="{% url 'profile_user' row.username %}" class="username">{{ row.username }}</a>
+                        <span class="net_worth">{{ row.net_worth }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="leaderboard_row">No users yet.</div>
+                    {% endfor %}
+                </div>
+            </aside>
+            <main class="home_main">
+            </main>
         </div>
     </body>

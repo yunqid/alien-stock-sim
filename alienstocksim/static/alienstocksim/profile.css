@@ -1,0 +1,112 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f8;
+    color: #222;
+}
+
+.page-container {
+    width: 85%;
+    max-width: 1100px;
+    margin: 30px auto;
+}
+
+.nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.nav-left a,
+.nav-right a {
+    text-decoration: none;
+    background-color: #2c7be5;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.nav-left a:last-child,
+.nav-right a:last-child {
+    margin-right: 0;
+}
+
+.card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.profile-header h1,
+.summary-section h2,
+.holdings-section h2,
+.friends-section h2,
+.leaderboard-section h2 {
+    margin-top: 0;
+}
+
+.summary-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-box {
+    flex: 1;
+    min-width: 220px;
+    background-color: #eef4ff;
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.summary-box h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f0f2f5;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+    .bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-grid {
+        flex-direction: column;
+    }
+}
