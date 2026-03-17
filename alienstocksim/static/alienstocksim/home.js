@@ -21,6 +21,13 @@ socket.onmessage = function(e) {
 
     const max_points = 10;
 
+    const prevPrice = chart.data.datasets[0].data.at(-1) ?? dataPoint.price;
+    const change = ((dataPoint.price - prevPrice) / prevPrice * 100).toFixed(2);
+
+    const sign = change >= 0 ? "+" : "";
+
+    chart.data.datasets[0].label = `Test Stock ${sign}${change}%`;
+
     chart.data.labels.push(time);
     chart.data.datasets[0].data.push(dataPoint.price);
 
