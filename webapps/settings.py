@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'alienstocksim',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -122,5 +123,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 LOGIN_URL = 'login'
+
+ASGI_APPLICATION = "webapps.asgi.py"
+
+# Note probably change this for deployment
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
