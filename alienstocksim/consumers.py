@@ -5,22 +5,26 @@ import random
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 class StockConsumer(AsyncWebsocketConsumer):
+    # Connecting to the websocket
     async def connect(self):
         await self.accept()
         self.running = True
         asyncio.create_task(self.send_stock_data())
 
+    # Disconnecting to the websocket
     async def disconnect(self, close_code):
         self.running = False
 
+    # Waits for the stock price then send it
     async def send_stock_data(self):
         while self.running:
             price = await self.get_stock_price()
             await self.send(text_data=json.dumps({
                 "price": price
             }))
-            await asyncio.sleep(1)
+            await asyncio.sleep(1) # Rate limits how fast data is sent
 
+    # Simulating the stock price
     async def get_stock_price(self):
         await asyncio.sleep(0) 
         return round(random.uniform(150, 200), 2)

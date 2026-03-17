@@ -31,6 +31,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'alienstocksim',
-    'channels',
 ]
 
 MIDDLEWARE = [
@@ -125,11 +126,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = 'login'
 
-ASGI_APPLICATION = "webapps.asgi.py"
+# Tells Django which asgi application to use to handle connections
+ASGI_APPLICATION = "webapps.asgi.application"
 
 # Note probably change this for deployment
+# Switch to redis
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+        "BACKEND": "channels.layers.InMemoryChannelLayer", # Stores stuff in memory
     },
 }
