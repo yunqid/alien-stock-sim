@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from alienstocksim.forms import LoginForm, RegisterForm
 from alienstocksim.models import Profile, StockEntry
+import json
+from django.http import JsonResponse
 
 # Create your views here.
 def login_action(request):
@@ -228,3 +230,51 @@ def profile_action(request, username=None):
         'is_own_profile': (user == request.user),
     }
     return render(request, 'alienstocksim/profile.html', context)
+
+
+@login_required
+def trade_stock(request):
+    # Loading/getting data
+    data = json.loads(request.body)
+    company = data.get("company")
+    action = data.get("action")
+    price = float(data.get("price"))
+
+    # Creating the stock holding
+    profile = request.user.profile
+    holding, created = StockEntry.objects.get_or_create(profile=profile, company=company)
+
+    # Different behavior based on action
+    if action == "buy":
+        if profile.liquid_money < price: 
+            return;
+        holding.quantity += 1
+        profile.liquid_money -= int(data.get("price"))
+
+    elif action == "sell":
+        if holding.quantity < 1:
+            return;
+        holding.quantity -= 1
+        profile.liquid_money += int(data.get("price"))
+
+    # Saving the model
+    holding.save()
+    profile.save()
+
+    # Returning the response to front
+    return JsonResponse({
+        "quantity": holding.quantity,
+        "liquid_money": profile.liquid_money
+    })
+
+def stock_stats(request, company):
+    # Filters for users who has greater than 0 stock
+    holders = StockEntry.objects.filter(company=company, quantity__gt=0)
+    # Getting relevant info 
+    total_holders = holders.count()
+    total_quantity = sum(h.quantity for h in holders)
+    # Returning the response to front
+    return JsonResponse({
+        "holders": total_holders,
+        "total_quantity": total_quantity
+    })

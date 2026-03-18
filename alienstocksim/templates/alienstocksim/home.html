@@ -36,11 +36,19 @@
                 </div>
             </aside>
             <main class="home_main">
-                <div>
-                    <canvas id="chart"></canvas>
-                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                    <script src="{% static 'alienstocksim/home.js' %}"></script>
+                <canvas id="chart"></canvas>
+                <div class="row">
+                    <p> Shares Held: <span id="holdings"></span></p>
+                    <p> Liquid Money: <span id="liquid_money"></span></p>
+                    <button onclick="buyStock()" id="buy_button"> Buy </button>
+                    <button onclick="sellStock()" id="sell_button"> Sell </button>
+                    <p> Total Holders: <span id="total_holders"></span></p>
+                    <p> Total Shares: <span id="total_shares"></span></p>
                 </div>
             </main>
         </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="{% static 'alienstocksim/home.js' %}"></script>
+
     </body>

@@ -1,3 +1,6 @@
+const company = "TESTTESTEST"; // Change this later
+let currentPrice = null;
+
 // Getting the chart element
 const ctx = document.getElementById('chart').getContext('2d');
 
@@ -15,9 +18,14 @@ const chart = new Chart(ctx, {
         animation: false,
         responsive: true,
         maintainAspectRatio: false, // Allows the size of the chart to rescale
-        y: {
-            beginAtZero: false,
-        }
+        // y: {
+        //     beginAtZero: false,
+        // },
+        elements: {
+            point: {
+                radius: 0
+            }
+        },
     }
 });
 
@@ -28,6 +36,7 @@ socket.onmessage = function(e) {
     // Getting the value + time stamp
     const dataPoint = JSON.parse(e.data);
     const time = new Date().toLocaleTimeString();
+    currentPrice = dataPoint.price;
 
     // Max number of points that can be present at once
     const max_points = 10;
@@ -52,3 +61,58 @@ socket.onmessage = function(e) {
 
     chart.update('none');
 };
+
+async function buyStock() {
+    // Communication with DJango
+    const res = await fetch("/trade/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken()},
+        // Passes the stock company, action, and price
+        body: JSON.stringify({ company, action: "buy", price: currentPrice }) 
+    });
+    const data = await res.json();
+    // Setting the UI
+    document.getElementById("holdings").textContent = data.quantity;
+    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+    // Refreshing the screen
+    fetchStats();
+}
+
+async function sellStock() {
+    // Communication with DJango
+    const res = await fetch("/trade/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken()},
+        // Passes the stock company, action, and price
+        body: JSON.stringify({ company, action: "sell", price: currentPrice })
+    });
+    const data = await res.json();
+    // Setting the UI
+    document.getElementById("holdings").textContent = data.quantity;
+    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+    // Refreshing the screen
+    fetchStats();
+}
+
+async function fetchStats() {
+    // Communication with DJango
+    const res = await fetch(`/stats/${company}/`);
+    const data = await res.json();
+    // Setting the UI
+    document.getElementById("total_holders").textContent = data.holders;
+    document.getElementById("total_shares").textContent = data.total_quantity;
+}
+
+// Getting CSRF Token
+function getCSRFToken() {
+    let cookies = document.cookie.split(";")
+    for (let i = 0; i < cookies.length; i++) {
+        let c = cookies[i].trim();
+        if (c.startsWith("csrftoken=")) {
+            return c.substring("csrftoken=".length, c.length);
+        }
+    }
+    return "unknown";
+}
+
+window.onload=fetchStats;

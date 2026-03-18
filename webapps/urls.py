@@ -25,4 +25,6 @@ urlpatterns = [
     path('logout', views.logout_action, name='logout'),
     path('profile', views.profile_action, name='profile'),
     path('profile/<str:username>', views.profile_action, name='profile_user'),
+    path("trade/", views.trade_stock, name="trade_stock"),
+    path("stats/<str:company>/", views.stock_stats, name="stock_stats"),
 ]
