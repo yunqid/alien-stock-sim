@@ -36,6 +36,10 @@
                 </div>
             </aside>
             <main class="home_main">
+                <form>
+                    {% csrf_token %}
+                </form>
+                
                 <canvas id="chart"></canvas>
                 <div class="row">
                     <p> Shares Held: <span id="holdings"></span></p>
