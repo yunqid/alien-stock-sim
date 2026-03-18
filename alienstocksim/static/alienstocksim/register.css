@@ -1,0 +1,48 @@
+body {
+    margin: 0px;
+    padding: 0px;
+}
+
+#login_link{
+    align-self: flex-end;
+    margin-left: auto;
+    margin-right: 20px;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-family: "Helvetica", Sans-serif;
+    text-decoration: none;
+}
+
+div[id = "id_page_name"]{
+    display: flex;
+    justify-content: center;
+    font-family: "Helvetica", Sans-serif;
+    margin-top: 50px;
+    font-size: 32px;
+}
+
+table {
+    display: flex;
+    justify-content: center;
+    font-size: 25px;
+    font-family: "Helvetica", Sans-serif;
+}
+
+table tr th {
+    font-weight: normal;
+}
+
+input {
+    width: 200px;
+    height: 35px;
+    font-size: 22px;
+}
+
+button {
+    font-size: 25px;
+    width: 100px;
+    height: 50px;
+    display: block;
+    margin: 0 auto;
+    margin-top: 15px;
+}
