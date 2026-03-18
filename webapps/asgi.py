@@ -11,15 +11,18 @@ import os
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
-import webapps.routing
+import alienstocksim.routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'webapps.settings')
 
+# Tells the channels what to do based on connection
 application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
+    "http": get_asgi_application(), # Regular HTTP Requests
+    # Websockets are passed through an authentication middleware
+    # Then routed to the consumer
     "websocket": AuthMiddlewareStack(
         URLRouter(
-            webapps.routing.websocket_urlpatterns
+            alienstocksim.routing.websocket_urlpatterns
         )
     ),
 })
