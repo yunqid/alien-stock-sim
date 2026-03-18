@@ -10,7 +10,15 @@ let data = {
 
 const chart = new Chart(ctx, {
     type: 'line', // Type of chart
-    data: data // Data that is being used to draw the chart, see above
+    data: data, // Data that is being used to draw the chart, see above
+    options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false, // Allows the size of the chart to rescale
+        y: {
+            beginAtZero: false,
+        }
+    }
 });
 
 // Opening a connection to the websocket
@@ -42,5 +50,5 @@ socket.onmessage = function(e) {
         chart.data.datasets[0].data.shift();
     }
 
-    chart.update();
+    chart.update('none');
 };
