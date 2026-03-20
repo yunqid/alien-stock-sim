@@ -1,6 +1,6 @@
 import json
 import asyncio
-import aiohttp
+import requests
 import random
 from channels.generic.websocket import AsyncWebsocketConsumer
 
@@ -22,15 +22,14 @@ class StockConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 "price": price
             }))
-            await asyncio.sleep(1) # Rate limits how fast data is sent
+            await asyncio.sleep(5) # Rate limits how fast data is sent
 
     # Simulating the stock price
     async def get_stock_price(self):
         await asyncio.sleep(0) 
         return round(random.uniform(150, 200), 2)
 
-    # Note don't know if this works yet since the api is rate limited
-    # Will test again past midnight tonight
+    # This works now
     # async def get_stock_price(self):
     #     url = "https://www.alphavantage.co/query"
     #     params = {
@@ -38,6 +37,6 @@ class StockConsumer(AsyncWebsocketConsumer):
     #         "symbol": "AAPL",
     #         "apikey": "D1PBWCAD52UWQ786"
     #     }
-    #     response = aiohttp.get(url, params=params)
+    #     response = requests.get(url, params=params)
     #     data = response.json()
     #     return data["Global Quote"]["05. price"]
