@@ -2,3 +2,4 @@ websockets
 channels
 requests
 daphne
+requests
