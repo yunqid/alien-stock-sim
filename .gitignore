@@ -6,4 +6,3 @@ venv
 my_env
 .idea
 .vscode
-__pycache__/
