@@ -7,6 +7,7 @@ import json
 from django.http import JsonResponse
 from google import genai
 import random
+from google.genai import types
 
 
 client = genai.Client()
@@ -17,39 +18,38 @@ def landing_action(request):
     return render(request, 'alienstocksim/landing.html')
 
 
-def generate_new_headline():
-    #googlin
-    #pear
-    #benefitco
-    #Fire Rage Inc.
-    companyDict = dict()
-    companyDict[1] = "Googlin"
-    companyDict[2] = "Pear"
-    companyDict[3] = "BenefitCo"
-    companyDict[4] = "Fire Rage Inc."
-
-    relatedCompany = companyDict[random.randint(1,4)]
-    severity = random.randint(1,3)
-
-    prompt = """
-    You are a satirical financial news generator for a stock trading game.
-    Write a single fictional, satirical news headline AND a 1-2 sentence story blurb for it.
-    The headline should reference a fictional company and hint at whether its stock will go up or down.
-
-    Respond with ONLY valid JSON in this exact format, no markdown, no extra text:
-    {
-        "company": "Company Name",
-        "headline": "The headline text here",
-        "blurb": "The short story blurb here.",
-        "direction": "up"
-    }
-
-    The direction field must be exactly "up" or "down".
+def generate_headline_batch():
+    companies = ["Googlin", "Pear", "BenefitCo", "Fire Rage Inc."]
+    
+    prompt = f"""
+    You are a financial headline generator for a fake stock trading game.
+    Generate a JSON list of EXACTLY 10 fictional news events. 
+    
+    For each event, randomly pick one of these companies: {', '.join(companies)}.
+    For each event, randomly assign a severity level of 1, 2, or 3 (3 is most impactful, 1 is least).
+    
+    The headline should reference the company and hint at whether its stock will go up or down based on the severity. 
+    NOTE: Severity is not indicative of good or bad. Severity 3 can be very good or very bad.
+    
+    Respond ONLY with a valid JSON array of objects in this exact format:
+    [
+        {{
+            "company": "Company Name",
+            "headline": "The headline text here",
+            "blurb": "The short story blurb here.",
+            "direction": "up" or "down",
+            "severity": "1", "2", or "3"
+        }}
+    ]
     """
     
     response = client.models.generate_content(
-        model="gemini-3-flash-preview", # try gemini-2.5-flash as well if we want different model
-        contents=prompt
+        model="gemini-2.5-flash", 
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            # forces the API to return pure JSON
+            response_mime_type="application/json",
+        )
     )
     
     return json.loads(response.text)

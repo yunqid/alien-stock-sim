@@ -3,13 +3,14 @@ import asyncio
 import requests
 import random
 from channels.generic.websocket import AsyncWebsocketConsumer
-from alienstocksim.views import generate_new_headline
+from alienstocksim.views import generate_headline_batch
 
 class StockConsumer(AsyncWebsocketConsumer):
     # Connecting to the websocket
     async def connect(self):
         await self.accept()
         self.running = True
+        self.headline_queue = []
         asyncio.create_task(self.send_stock_data())
         asyncio.create_task(self.send_headline_data())
 
@@ -48,14 +49,17 @@ class StockConsumer(AsyncWebsocketConsumer):
         while self.running:
             await asyncio.sleep(60)
             try:
-                print("fetching headline")
-                headline = await asyncio.to_thread(generate_new_headline)
-                print("headline fetched: ", headline)
+                if not self.headline_queue:
+                    print("fetching new headlines")
+                    self.headline_queue = await asyncio.to_thread(generate_headline_batch)
+                    print(f"Batch fetched: {len(self.headline_queue)} headlines")
+
+                headline = self.headline_queue.pop()
                 await self.send(text_data=json.dumps({
                     "type": "news_headline",
                     "headline": headline
                 }))
-                print("headline sent")
+                print("Headline sent:", headline)
             except Exception as e:
                 print(f"Headline generation failed with error: {e}")
                 #pray we dont get here...
