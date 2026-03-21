@@ -37,6 +37,43 @@
             </aside>
             <main class="home_main">
                 <form>
+        {% csrf_token %}
+    </form>
+
+    <div class="news_panel">
+        <div class="news_header">
+            <span class="news_label">News</span>
+            <div class="news_filter_wrapper">
+                <button class="news_filter_btn" id="news_filter_btn">
+                    Filter by Company ▾
+                </button>
+                <div class="news_filter_dropdown" id="news_filter_dropdown">
+                    <!-- Company filter options will populate here -->
+                    <div class="news_filter_option">All Companies</div>
+                </div>
+            </div>
+        </div>
+        <div class="news_feed" id="news_feed">
+            <!-- News headlines will populate here -->
+            <div class="news_placeholder">Loading headlines...</div>
+        </div>
+    </div>
+
+    <canvas id="chart"></canvas>
+    <div class="row">
+        <p> Shares Held: <span id="holdings"></span></p>
+        <p> Liquid Money: <span id="liquid_money"></span></p>
+        <button onclick="buyStock()" id="buy_button"> Buy </button>
+        <button onclick="sellStock()" id="sell_button"> Sell </button>
+        <p> Total Holders: <span id="total_holders"></span></p>
+        <p> Total Shares: <span id="total_shares"></span></p>
+    </div>
+
+
+
+
+
+                <!-- <form>
                     {% csrf_token %}
                 </form>
                 
@@ -48,7 +85,7 @@
                     <button onclick="sellStock()" id="sell_button"> Sell </button>
                     <p> Total Holders: <span id="total_holders"></span></p>
                     <p> Total Shares: <span id="total_shares"></span></p>
-                </div>
+                </div> -->
             </main>
         </div>
 

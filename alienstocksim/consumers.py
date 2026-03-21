@@ -3,6 +3,7 @@ import asyncio
 import requests
 import random
 from channels.generic.websocket import AsyncWebsocketConsumer
+from alienstocksim.views import generate_new_headline
 
 class StockConsumer(AsyncWebsocketConsumer):
     # Connecting to the websocket
@@ -10,6 +11,7 @@ class StockConsumer(AsyncWebsocketConsumer):
         await self.accept()
         self.running = True
         asyncio.create_task(self.send_stock_data())
+        asyncio.create_task(self.send_headline_data())
 
     # Disconnecting to the websocket
     async def disconnect(self, close_code):
@@ -20,6 +22,7 @@ class StockConsumer(AsyncWebsocketConsumer):
         while self.running:
             price = await self.get_stock_price()
             await self.send(text_data=json.dumps({
+                "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
                 "price": price
             }))
             await asyncio.sleep(5) # Rate limits how fast data is sent
@@ -40,3 +43,19 @@ class StockConsumer(AsyncWebsocketConsumer):
     #     response = requests.get(url, params=params)
     #     data = response.json()
     #     return data["Global Quote"]["05. price"]
+
+    async def send_headline_data(self):
+        while self.running:
+            await asyncio.sleep(60)
+            try:
+                print("fetching headline")
+                headline = await asyncio.to_thread(generate_new_headline)
+                print("headline fetched: ", headline)
+                await self.send(text_data=json.dumps({
+                    "type": "news_headline",
+                    "headline": headline
+                }))
+                print("headline sent")
+            except Exception as e:
+                print(f"Headline generation failed with error: {e}")
+                #pray we dont get here...

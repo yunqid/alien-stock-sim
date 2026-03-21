@@ -5,3 +5,4 @@ venv
 my_env
 .idea
 .vscode
+.env

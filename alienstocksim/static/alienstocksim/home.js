@@ -1,5 +1,6 @@
 const company = "TESTTESTEST"; // Change this later
 let currentPrice = null;
+const MAX_HEADLINES = 20;
 
 // Getting the chart element
 const ctx = document.getElementById('chart').getContext('2d');
@@ -35,6 +36,13 @@ const socket = new WebSocket('ws://localhost:8000/ws/alienstocksim/');
 socket.onmessage = function(e) {
     // Getting the value + time stamp
     const dataPoint = JSON.parse(e.data);
+
+    if (dataPoint.type === "news_headline") {
+        console.log("headline received:", dataPoint.headline);  // check this in browser devtools
+        addHeadline(dataPoint.headline);
+        return;
+    }
+
     const time = new Date().toLocaleTimeString();
     currentPrice = dataPoint.price;
 
@@ -113,6 +121,48 @@ function getCSRFToken() {
         }
     }
     return "unknown";
+}
+
+
+// News filter dropdown toggle
+const filterBtn = document.getElementById('news_filter_btn');
+const filterDropdown = document.getElementById('news_filter_dropdown');
+
+filterBtn?.addEventListener('click', () => {
+    filterDropdown.classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+    if (!filterBtn.contains(e.target) && !filterDropdown.contains(e.target)) {
+        filterDropdown.classList.remove('open');
+    }
+});
+
+function addHeadline(data) {
+    const newsFeed = document.getElementById('news_feed');  // moved inside
+    if (!newsFeed) return;
+    const placeholder = newsFeed.querySelector('.news_placeholder');
+    if (placeholder) placeholder.remove();
+
+    const directionClass = data.direction === 'up' ? 'news_tag_up' : 'news_tag_down';
+    const arrow = data.direction === 'up' ? '▲' : '▼';
+
+    const item = document.createElement('div');
+    item.className = 'news_item';
+    item.innerHTML = `
+        <span class="news_tag ${directionClass}">${data.company} ${arrow}</span>
+        <div class="news_text">
+            <strong>${data.headline}</strong>
+            <p class="news_blurb">${data.blurb}</p>
+        </div>
+    `;
+
+    newsFeed.prepend(item);
+
+    const items = newsFeed.querySelectorAll('.news_item');
+    if (items.length > MAX_HEADLINES) {
+        items[items.length - 1].remove();
+    }
 }
 
 window.onload=fetchStats;

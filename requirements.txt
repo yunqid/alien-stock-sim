@@ -4,3 +4,5 @@ requests
 daphne
 django-allauth
 PyJWT
+google-genai
+python-dotenv

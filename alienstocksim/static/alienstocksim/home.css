@@ -114,3 +114,121 @@
         transform: translateX(-100%);
     }
 }
+
+
+/* ── News Panel ── */
+.news_panel {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fafafa;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.news_header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #ccc;
+    background: #f0f0f0;
+}
+
+.news_label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Filter button matches .profile_tab styling */
+.news_filter_wrapper {
+    position: relative;
+}
+
+.news_filter_btn {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    color: #333;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.news_filter_btn:hover {
+    background: #e0e0e0;
+}
+
+.news_filter_dropdown {
+    display: none;   /* toggled open via JS / class */
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    z-index: 20;
+}
+
+.news_filter_dropdown.open {
+    display: block;
+}
+
+.news_filter_option {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.875rem;
+    color: #333;
+    cursor: pointer;
+}
+
+.news_filter_option:hover {
+    background: #f0f0f0;
+}
+
+/* Feed area */
+.news_feed {
+    padding: 0.5rem 0.75rem;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.news_placeholder {
+    color: #999;
+    font-size: 0.875rem;
+    padding: 0.5rem 0;
+}
+
+/* Individual headline card (ready for when you wire in the API) */
+.news_item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    font-size: 0.875rem;
+    color: #222;
+}
+
+.news_item .news_tag {
+    flex-shrink: 0;
+    padding: 0.1rem 0.4rem;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #155724;
+}
+
+.news_item .news_text {
+    flex: 1;
+    line-height: 1.4;
+}

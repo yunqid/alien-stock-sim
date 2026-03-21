@@ -1,4 +1,3 @@
-from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
@@ -6,13 +5,54 @@ from alienstocksim.forms import LoginForm, RegisterForm
 from alienstocksim.models import Profile, StockEntry
 import json
 from django.http import JsonResponse
+from google import genai
+import random
 
 
+client = genai.Client()
 
 def landing_action(request):
     if request.user.is_authenticated:
         return redirect('home')
     return render(request, 'alienstocksim/landing.html')
+
+
+def generate_new_headline():
+    #googlin
+    #pear
+    #benefitco
+    #Fire Rage Inc.
+    companyDict = dict()
+    companyDict[1] = "Googlin"
+    companyDict[2] = "Pear"
+    companyDict[3] = "BenefitCo"
+    companyDict[4] = "Fire Rage Inc."
+
+    relatedCompany = companyDict[random.randint(1,4)]
+    severity = random.randint(1,3)
+
+    prompt = """
+    You are a satirical financial news generator for a stock trading game.
+    Write a single fictional, satirical news headline AND a 1-2 sentence story blurb for it.
+    The headline should reference a fictional company and hint at whether its stock will go up or down.
+
+    Respond with ONLY valid JSON in this exact format, no markdown, no extra text:
+    {
+        "company": "Company Name",
+        "headline": "The headline text here",
+        "blurb": "The short story blurb here.",
+        "direction": "up"
+    }
+
+    The direction field must be exactly "up" or "down".
+    """
+    
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview", # try gemini-2.5-flash as well if we want different model
+        contents=prompt
+    )
+    
+    return json.loads(response.text)
 
 
 # Dummy data for Sprint 1
