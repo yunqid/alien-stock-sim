@@ -138,8 +138,9 @@ document.addEventListener('click', (e) => {
     }
 });
 
+
 function addHeadline(data) {
-    const newsFeed = document.getElementById('news_feed');  // moved inside
+    const newsFeed = document.getElementById('news_feed');
     if (!newsFeed) return;
     const placeholder = newsFeed.querySelector('.news_placeholder');
     if (placeholder) placeholder.remove();
@@ -149,6 +150,7 @@ function addHeadline(data) {
 
     const item = document.createElement('div');
     item.className = 'news_item';
+    item.setAttribute('data-company', data.company);
     item.innerHTML = `
         <span class="news_tag ${directionClass}">${data.company} ${arrow}</span>
         <div class="news_text">
@@ -165,4 +167,23 @@ function addHeadline(data) {
     }
 }
 
-window.onload=fetchStats;
+window.onload= function () {
+    fetchStats();
+
+    document.querySelectorAll('.news_filter_option').forEach(option => {
+        option.addEventListener('click', () => {
+            const selected = option.textContent.trim();
+            const items = document.querySelectorAll('.news_item');
+            filterBtn.textContent = selected === 'All Companies' ? 'Filter by Company ▾' : `${selected} ▾`;
+            items.forEach(item => {
+                if (selected === 'All Companies' || item.getAttribute('data-company') === selected) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            filterDropdown.classList.remove('open');
+        });
+    });
+    }

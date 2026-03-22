@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 class NewsItem(models.Model):
     company = models.CharField(max_length = 200) #maybe a foreignkey? Then we would need a company model
     headline = models.CharField(max_length = 200)
+    blurb = models.CharField(max_length = 200, default="")
+    direction = models.CharField(max_length = 200, default="")
     severity = models.IntegerField(default = 1)
     #1 is least severe
     #2 is medium
