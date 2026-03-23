@@ -1,99 +1,97 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        {% load static %}
-        <link href="{% static 'alienstocksim/home.css' %}" rel="stylesheet" type="text/css">
-        <title> Home </title>
-    </head>
-    <body>
-        <header class="breaking_news_section">
-            <div class="breaking_news_top">
-                <div class="scrolling_container">
-                    <div class="scrolling_text">
-                        BREAKING NEWS: THIS IS THE HOME PAGE!
-                    </div>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% load static %}
+    <link href="{% static 'alienstocksim/theme.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'alienstocksim/home.css' %}" rel="stylesheet" type="text/css">
+    <title>Trading desk — Alien Stock Sim</title>
+</head>
+<body class="app-body">
+    <div class="app-bg" aria-hidden="true"></div>
+    <div class="app-shell">
+        <div class="ticker-strip">
+            <div class="ticker-inner">
+                <div class="ticker-scroll">
+                    <span class="ticker-text">Breaking · Markets live · Trade responsibly · Alien Stock Sim</span>
                 </div>
             </div>
-            <nav class="top_nav">
-                <a href="{% url 'profile' %}" class="profile_tab">Profile</a>
-            </nav>
+        </div>
+        <header class="app-top">
+            <div class="app-top-inner">
+                <a href="{% url 'home' %}" class="app-brand">
+                    <span class="app-brand-mark" aria-hidden="true">👽</span>
+                    <span>Alien Stock Sim</span>
+                </a>
+                <nav class="app-nav-links" aria-label="Main">
+                    <a href="{% url 'home' %}" class="app-nav-link app-nav-link--active">Home</a>
+                    <a href="{% url 'profile' %}" class="app-nav-link">Profile</a>
+                    <a href="{% url 'account_logout' %}" class="app-nav-link app-nav-link--ghost">Logout</a>
+                </nav>
+            </div>
         </header>
-        <div class="home_layout">
-            <aside class="leaderboard_sidebar">
-                <h2 class="leaderboard_title">Leaderboard</h2>
+
+        <div class="home-page-grid">
+            <aside class="leaderboard_sidebar glass-panel" aria-labelledby="lb-heading">
+                <h2 id="lb-heading" class="leaderboard_title">Leaderboard</h2>
                 <p class="leaderboard_subtitle">Ranked by net worth</p>
                 <div class="leaderboard_list">
                     {% for row in leaderboard %}
-                    <div class="leaderboard_row {% if row.is_current %}current_user{% endif %}">
+                    <div class="leaderboard_row {% if row.is_current %}current_user{% endif %} {% if row.rank == 1 %}rank_medal_1{% elif row.rank == 2 %}rank_medal_2{% elif row.rank == 3 %}rank_medal_3{% endif %}">
                         <span class="rank">{{ row.rank }}.</span>
                         <a href="{% url 'profile_user' row.username %}" class="username">{{ row.username }}</a>
                         <span class="net_worth">{{ row.net_worth }}</span>
                     </div>
                     {% empty %}
-                    <div class="leaderboard_row">No users yet.</div>
+                    <div class="leaderboard_row leaderboard_empty">No users yet.</div>
                     {% endfor %}
                 </div>
             </aside>
+
             <main class="home_main">
-                <form>
-        {% csrf_token %}
-    </form>
-
-    <div class="news_panel">
-        <div class="news_header">
-            <span class="news_label">News</span>
-            <div class="news_filter_wrapper">
-                <button class="news_filter_btn" id="news_filter_btn">
-                    Filter by Company ▾
-                </button>
-                <div class="news_filter_dropdown" id="news_filter_dropdown">
-                    <!-- Company filter options will populate here -->
-                    <div class="news_filter_option">All Companies</div>
-                    <div class="news_filter_option">Googlin</div>
-                    <div class="news_filter_option">Pear</div>
-                    <div class="news_filter_option">BenefitCo</div>
-                    <div class="news_filter_option">Fire Rage Inc.</div>
+                <div class="news_panel glass-panel">
+                    <div class="news_header">
+                        <span class="news_label">News</span>
+                        <div class="news_filter_wrapper">
+                            <button type="button" class="news_filter_btn" id="news_filter_btn" aria-expanded="false" aria-haspopup="listbox">
+                                Filter by Company ▾
+                            </button>
+                            <div class="news_filter_dropdown" id="news_filter_dropdown" role="listbox">
+                                <div class="news_filter_option" role="option">All Companies</div>
+                                <div class="news_filter_option" role="option">Googlin</div>
+                                <div class="news_filter_option" role="option">Pear</div>
+                                <div class="news_filter_option" role="option">BenefitCo</div>
+                                <div class="news_filter_option" role="option">Fire Rage Inc.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="news_feed" id="news_feed">
+                        <div class="news_placeholder">Loading headlines…</div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <div class="news_feed" id="news_feed">
-            <!-- News headlines will populate here -->
-            <div class="news_placeholder">Loading headlines...</div>
-        </div>
-    </div>
 
-    <canvas id="chart"></canvas>
-    <div class="row">
-        <p> Shares Held: <span id="holdings"></span></p>
-        <p> Liquid Money: <span id="liquid_money"></span></p>
-        <button onclick="buyStock()" id="buy_button"> Buy </button>
-        <button onclick="sellStock()" id="sell_button"> Sell </button>
-        <p> Total Holders: <span id="total_holders"></span></p>
-        <p> Total Shares: <span id="total_shares"></span></p>
-    </div>
-
-
-
-
-
-                <!-- <form>
-                    {% csrf_token %}
-                </form>
-                
-                <canvas id="chart"></canvas>
-                <div class="row">
-                    <p> Shares Held: <span id="holdings"></span></p>
-                    <p> Liquid Money: <span id="liquid_money"></span></p>
-                    <button onclick="buyStock()" id="buy_button"> Buy </button>
-                    <button onclick="sellStock()" id="sell_button"> Sell </button>
-                    <p> Total Holders: <span id="total_holders"></span></p>
-                    <p> Total Shares: <span id="total_shares"></span></p>
-                </div> -->
+                <div class="trading_panel glass-panel card_panel">
+                    <h2 class="panel_title">Trading</h2>
+                    <div class="chart-wrap">
+                        <canvas id="chart" aria-label="Price chart"></canvas>
+                    </div>
+                    <div class="trading_stats">
+                        <div class="stat"><span class="stat_label">Shares held</span><span id="holdings" class="stat_value">—</span></div>
+                        <div class="stat"><span class="stat_label">Liquid money</span><span id="liquid_money" class="stat_value">—</span></div>
+                        <div class="stat"><span class="stat_label">Total holders</span><span id="total_holders" class="stat_value">—</span></div>
+                        <div class="stat"><span class="stat_label">Total shares</span><span id="total_shares" class="stat_value">—</span></div>
+                    </div>
+                    <div class="trading_actions">
+                        <button type="button" onclick="buyStock()" id="buy_button" class="btn_trade btn_buy">Buy</button>
+                        <button type="button" onclick="sellStock()" id="sell_button" class="btn_trade btn_sell">Sell</button>
+                    </div>
+                </div>
             </main>
         </div>
+    </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="{% static 'alienstocksim/home.js' %}"></script>
-
-    </body>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'alienstocksim/home.js' %}"></script>
+</body>
+</html>

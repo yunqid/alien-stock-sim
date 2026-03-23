@@ -6,25 +6,41 @@ const MAX_HEADLINES = 20;
 const ctx = document.getElementById('chart').getContext('2d');
 
 let data = {
-    labels: [], // X-axis
+    labels: [],
     datasets: [{
-        data: [] // Y-axis
+        data: [],
+        borderColor: '#5b9def',
+        backgroundColor: 'rgba(91, 157, 239, 0.12)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.25,
     }]
 };
 
 const chart = new Chart(ctx, {
-    type: 'line', // Type of chart
-    data: data, // Data that is being used to draw the chart, see above
+    type: 'line',
+    data: data,
     options: {
         animation: false,
         responsive: true,
-        maintainAspectRatio: false, // Allows the size of the chart to rescale
-        // y: {
-        //     beginAtZero: false,
-        // },
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
         elements: {
-            point: {
-                radius: 0
+            point: { radius: 0, hoverRadius: 4 }
+        },
+        plugins: {
+            legend: {
+                labels: { color: '#e8ecf1', font: { size: 12, weight: '600' } }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: '#9ca3af', maxTicksLimit: 8 },
+                grid: { color: 'rgba(255, 255, 255, 0.06)' }
+            },
+            y: {
+                ticks: { color: '#9ca3af' },
+                grid: { color: 'rgba(255, 255, 255, 0.06)' }
             }
         },
     }
@@ -129,12 +145,15 @@ const filterBtn = document.getElementById('news_filter_btn');
 const filterDropdown = document.getElementById('news_filter_dropdown');
 
 filterBtn?.addEventListener('click', () => {
-    filterDropdown.classList.toggle('open');
+    const open = filterDropdown.classList.toggle('open');
+    filterBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
 });
 
 document.addEventListener('click', (e) => {
+    if (!filterBtn || !filterDropdown) return;
     if (!filterBtn.contains(e.target) && !filterDropdown.contains(e.target)) {
         filterDropdown.classList.remove('open');
+        filterBtn.setAttribute('aria-expanded', 'false');
     }
 });
 
@@ -184,6 +203,7 @@ window.onload= function () {
             });
 
             filterDropdown.classList.remove('open');
+            filterBtn.setAttribute('aria-expanded', 'false');
         });
     });
     }

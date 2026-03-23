@@ -1,12 +1,14 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 from alienstocksim.forms import LoginForm, RegisterForm
 from alienstocksim.models import Profile, StockEntry
+from alienstocksim.pricing import get_last_price
 import json
 from django.http import JsonResponse
 from google import genai
-import random
 from google.genai import types
 
 
@@ -55,92 +57,65 @@ def generate_headline_batch():
     return json.loads(response.text)
 
 
-# Dummy data for Sprint 1
-DUMMY_CURRENT_PRICES = {
-    'AAPL': 185.20,
-    'TSLA': 210.40,
-    'NVDA': 875.60,
-    'AMZN': 178.10,
-}
-
-DUMMY_BOUGHT_AT = {
-    'AAPL': 178.50,
-    'TSLA': 195.00,
-    'NVDA': 820.00,
-    'AMZN': 165.30,
-}
-
-DEFAULT_PRICE = 100
-
-DUMMY_HOLDINGS = [
-    ('AAPL', 10, 185.20, 178.50),
-    ('TSLA', 5, 210.40, 195.00),
-    ('NVDA', 3, 875.60, 820.00),
-    ('AMZN', 2, 178.10, 165.30),
-]
-
 # Helper functions
 
-def _net_worth(profile, current_prices=None):
+def net_worth_live(profile):
     """
-    Net worth = liquid_money + sum(quantity * current_price) for each real holding.
-    Only uses actual StockEntry rows in the database.
+    Net worth from DB: liquid_money + sum(quantity * cached live price) per position.
+    Used for profile summary and all leaderboards (no dummy portfolio).
     """
-    prices = current_prices or DUMMY_CURRENT_PRICES
     total = profile.liquid_money
-
-    for entry in profile.stocks.all():
-        total += entry.quantity * prices.get(entry.company, DEFAULT_PRICE)
-
-    return total
-
-
-def display_net_worth(profile):
-    """
-    For Sprint 1 display/demo purposes:
-    - If the user has real stock entries, use them.
-    - Otherwise, use dummy holdings.
-    """
-    if profile.stocks.exists():
-        return _net_worth(profile, DUMMY_CURRENT_PRICES)
-
-    total = profile.liquid_money
-    for company, qty, curr, bought in DUMMY_HOLDINGS:
-        total += qty * curr
+    for entry in profile.stocks.filter(quantity__gt=0):
+        total += entry.quantity * get_last_price(entry.company)
     return total
 
 
 def build_holdings_for_profile(profile):
-    """
-    Build holdings for display on the profile page.
-    - If real holdings exist, show real holdings with dummy current prices.
-    - Otherwise, show dummy holdings.
-    """
+    """Holdings table: only DB rows with quantity > 0; prices from cache / cost basis from trades."""
     holdings = []
-    real_entries = profile.stocks.all().order_by('company')
+    for entry in profile.stocks.filter(quantity__gt=0).order_by('company'):
+        curr = get_last_price(entry.company)
+        if entry.cost_basis_paid > 0:
+            avg_buy = entry.cost_basis_paid / entry.quantity
+            bought_display = f"${avg_buy:,.2f}"
+        else:
+            bought_display = "—"
 
-    if real_entries.exists():
-        for entry in real_entries:
-            company = entry.company
-            curr = DUMMY_CURRENT_PRICES.get(company, DEFAULT_PRICE)
-            bought = DUMMY_BOUGHT_AT.get(company, DEFAULT_PRICE - 10)
-
-            holdings.append({
-                'company': company,
-                'quantity': entry.quantity,
-                'current_price': f"${curr:,.2f}",
-                'bought_at_price': f"${bought:,.2f}",
-            })
-    else:
-        for company, qty, curr, bought in DUMMY_HOLDINGS:
-            holdings.append({
-                'company': company,
-                'quantity': qty,
-                'current_price': f"${curr:,.2f}",
-                'bought_at_price': f"${bought:,.2f}",
-            })
+        holdings.append({
+            'company': entry.company,
+            'quantity': entry.quantity,
+            'current_price': f"${curr:,.2f}",
+            'bought_at_price': bought_display,
+        })
 
     return holdings
+
+
+def _friends_leaderboard_rows(profile, highlight_profile):
+    """
+    Rank the profile owner and everyone they follow by net worth.
+    highlight_profile is used to mark the row for the profile page being viewed.
+    """
+    participants = list(
+        profile.following.select_related('user').prefetch_related('stocks')
+    )
+    seen = {p.pk for p in participants}
+    if profile.pk not in seen:
+        participants.append(profile)
+
+    ranked = [(p, net_worth_live(p)) for p in participants]
+    ranked.sort(key=lambda x: x[1], reverse=True)
+
+    return [
+        {
+            'rank': i + 1,
+            'username': p.user.username,
+            'net_worth': f"${net:,.2f}",
+            'is_highlight': (p.pk == highlight_profile.pk),
+        }
+        for i, (p, net) in enumerate(ranked)
+    ]
+
 
 @login_required
 def home_action(request):
@@ -148,7 +123,7 @@ def home_action(request):
         Profile.objects.select_related('user').prefetch_related('stocks')
     )
 
-    ranked = [(p, display_net_worth(p)) for p in profiles]
+    ranked = [(p, net_worth_live(p)) for p in profiles]
     ranked.sort(key=lambda x: x[1], reverse=True)
 
     leaderboard = [
@@ -177,32 +152,29 @@ def profile_action(request, username=None):
         user = get_object_or_404(User, username=username)
         profile = get_object_or_404(Profile, user=user)
 
-    friend_profiles = profile.followers.all().select_related('user').prefetch_related('stocks')
+    viewer_profile, _ = Profile.objects.get_or_create(user=request.user)
+    is_own_profile = user == request.user
+    is_following = profile.followers.filter(pk=viewer_profile.pk).exists()
 
-    friends_list = [
-        {'username': p.user.username}
-        for p in friend_profiles
-    ]
+    followers_qs = profile.followers.select_related('user').prefetch_related('stocks')
+    followers_list = [{'username': p.user.username} for p in followers_qs]
 
-    leaderboard_data = [
-        {
-            'username': p.user.username,
-            'net_worth': display_net_worth(p),
-        }
-        for p in friend_profiles
-    ]
-    leaderboard_data.sort(key=lambda x: x['net_worth'], reverse=True)
+    following_qs = profile.following.select_related('user').prefetch_related('stocks')
+    following_list = [{'username': p.user.username} for p in following_qs]
 
-    friends_leaderboard = [
-        {
-            'username': row['username'],
-            'net_worth': f"${row['net_worth']:,.2f}",
-        }
-        for row in leaderboard_data
-    ]
+    friends_leaderboard = _friends_leaderboard_rows(profile, highlight_profile=profile)
+
+    search_query = (request.GET.get('q') or '').strip()
+    search_results = []
+    if is_own_profile and search_query:
+        search_results = list(
+            User.objects.filter(username__icontains=search_query)
+            .exclude(pk=request.user.pk)
+            .order_by('username')[:20]
+        )
 
     holdings = build_holdings_for_profile(profile)
-    profile_net_worth = display_net_worth(profile)
+    profile_net_worth = net_worth_live(profile)
 
     context = {
         'profile_user': user,
@@ -210,11 +182,37 @@ def profile_action(request, username=None):
         'liquid_money': f"${profile.liquid_money:,.2f}",
         'net_worth': f"${profile_net_worth:,.2f}",
         'holdings': holdings,
-        'friends_list': friends_list,
+        'followers_list': followers_list,
+        'following_list': following_list,
         'friends_leaderboard': friends_leaderboard,
-        'is_own_profile': (user == request.user),
+        'is_own_profile': is_own_profile,
+        'is_following': is_following,
+        'search_query': search_query,
+        'search_results': search_results,
     }
     return render(request, 'alienstocksim/profile.html', context)
+
+
+@login_required
+@require_POST
+def follow_toggle(request):
+    username = (request.POST.get('username') or '').strip()
+    action = request.POST.get('action')
+    next_url = request.POST.get('next') or reverse('home')
+
+    if not username or username == request.user.username:
+        return redirect(next_url)
+
+    target_user = get_object_or_404(User, username=username)
+    target_profile = get_object_or_404(Profile, user=target_user)
+    me, _ = Profile.objects.get_or_create(user=request.user)
+
+    if action == 'follow':
+        target_profile.followers.add(me)
+    elif action == 'unfollow':
+        target_profile.followers.remove(me)
+
+    return redirect(next_url)
 
 
 @login_required
@@ -224,6 +222,7 @@ def trade_stock(request):
     company = data.get("company")
     action = data.get("action")
     price = float(data.get("price"))
+    price_int = int(data.get("price"))
 
     # Creating the stock holding
     profile = request.user.profile
@@ -231,16 +230,21 @@ def trade_stock(request):
 
     # Different behavior based on action
     if action == "buy":
-        if profile.liquid_money < price: 
-            return;
+        if profile.liquid_money < price_int:
+            return JsonResponse({"error": "insufficient_funds"}, status=400)
         holding.quantity += 1
-        profile.liquid_money -= int(data.get("price"))
+        holding.cost_basis_paid += price_int
+        profile.liquid_money -= price_int
 
     elif action == "sell":
         if holding.quantity < 1:
-            return;
+            return JsonResponse({"error": "no_shares"}, status=400)
+        if holding.quantity == 1:
+            holding.cost_basis_paid = 0
+        else:
+            holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity
         holding.quantity -= 1
-        profile.liquid_money += int(data.get("price"))
+        profile.liquid_money += price_int
 
     # Saving the model
     holding.save()

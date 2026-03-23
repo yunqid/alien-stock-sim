@@ -28,6 +28,8 @@ class StockEntry(models.Model):
                                 related_name = "stocks")
     company = models.CharField(max_length = 200)
     quantity = models.IntegerField(default = 0)
+    # Whole dollars paid for shares still held (updated on buy/sell in trade_stock).
+    cost_basis_paid = models.IntegerField(default = 0)
 
     class Meta:
         #This meta class is important because it prevents duplicate entries
