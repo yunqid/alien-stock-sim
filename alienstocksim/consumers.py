@@ -26,7 +26,7 @@ class StockConsumer(AsyncWebsocketConsumer):
             lambda: PriceCache.objects.filter(company="TESTTESTEST").first()
         )
         if cache and cache.datapoints:
-            recent_points = cache.datapoints[-20] # Gets the last 20 points
+            recent_points = cache.datapoints[-10:] # Gets the last 20 points
             if recent_points:
                 await self.send(text_data=json.dumps({
                     "type": "price_history",
@@ -64,6 +64,7 @@ class StockConsumer(AsyncWebsocketConsumer):
         while self.running:
             price = await self.get_stock_price()
             await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", price)
+            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
             await self.send(text_data=json.dumps({
                 "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
                 "price": price
@@ -74,6 +75,8 @@ class StockConsumer(AsyncWebsocketConsumer):
     async def send_predicted_data(self, interval=10):
         while self.running:
             price = await self.get_stock_price()
+            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", price)
+            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
             await self.send(text_data=json.dumps({
                 "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
                 "price": price
@@ -81,7 +84,7 @@ class StockConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(interval) # Rate limits how fast data is sent
 
     @staticmethod
-    def _append_to_cache(company, price, stream):
+    def _append_to_cache(company, price):
         cache, _ = PriceCache.objects.get_or_create(company=company)
         cache.datapoints.append({"t": int(time.time()), "p": int(price * 100)})
         cache.datapoints = cache.datapoints[-400:]  # 200 per stream
