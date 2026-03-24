@@ -59,6 +59,18 @@ socket.onmessage = function(e) {
         return;
     }
 
+    if (dataPoint.type === "price_history") {
+        // Pre-populate chart with cached points before live data arrives
+        dataPoint.datapoints.forEach(dp => {
+            const time = new Date(dp.t * 1000).toLocaleTimeString();
+            const price = dp.p / 100;  // cents → dollars
+            chart.data.labels.push(time);
+            chart.data.datasets[0].data.push(price);
+        });
+        chart.update('none');
+        return;
+    }
+
     const time = new Date().toLocaleTimeString();
     currentPrice = dataPoint.price;
 

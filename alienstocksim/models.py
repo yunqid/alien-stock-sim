@@ -31,6 +31,14 @@ class StockEntry(models.Model):
     # Whole dollars paid for shares still held (updated on buy/sell in trade_stock).
     cost_basis_paid = models.IntegerField(default = 0)
 
+    price_cache = models.ForeignKey(
+        "PriceCache",
+        null=True, 
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="holdings",
+    )
+
     class Meta:
         #This meta class is important because it prevents duplicate entries
         #i.e. (Leyu, "CMPA") can't be created if ("Leyu", "CMPA") already exists in DB
@@ -40,3 +48,11 @@ class StockEntry(models.Model):
         #holding, created = StockEntry.get_or_create(profile=profile, company = "<company>")
         #holding.quantity += <new amount bought>
         #holding.save() <-- important to save the new amount to DB
+
+class PriceCache(models.Model):
+    company = models.CharField(max_length=200, unique=True)
+    # Stores a list of {t: <unix timestamp>, p: <price cents>} dicts.
+    datapoints = models.JSONField(default=list)
+
+    def __str__(self):
+        return f"PriceCache({self.company}, {len(self.datapoints)} pts)"
