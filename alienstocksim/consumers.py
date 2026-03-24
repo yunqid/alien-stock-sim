@@ -5,6 +5,7 @@ import random
 import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 from alienstocksim.views import generate_headline_batch
+from alienstocksim.pricing import set_last_price, TRADE_COMPANY
 from alienstocksim.models import NewsItem, PriceCache
 
 class StockConsumer(AsyncWebsocketConsumer):
@@ -73,7 +74,6 @@ class StockConsumer(AsyncWebsocketConsumer):
     async def send_predicted_data(self, interval=10):
         while self.running:
             price = await self.get_stock_price()
-            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", price)
             await self.send(text_data=json.dumps({
                 "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
                 "price": price

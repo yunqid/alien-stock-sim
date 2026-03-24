@@ -1,0 +1,212 @@
+/* Shared app chrome — matches landing (Alien Stock Sim) */
+
+:root {
+    --color-bg-deep: #0a0e17;
+    --color-bg-mid: #111827;
+    --color-text: #e8ecf1;
+    --color-text-muted: #9ca3af;
+    --color-text-dim: #6b7280;
+    --color-accent: #2c7be5;
+    --color-accent-hover: #1a68d1;
+    --color-accent-soft: rgba(44, 123, 229, 0.2);
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-card: rgba(17, 24, 39, 0.72);
+    --color-card-solid: #151c2c;
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 14px;
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+.app-body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-ui);
+    color: var(--color-text);
+    background: var(--color-bg-deep);
+    line-height: 1.5;
+}
+
+.app-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(44, 123, 229, 0.28), transparent 55%),
+        radial-gradient(ellipse 80% 50% at 100% 40%, rgba(124, 58, 237, 0.1), transparent 50%),
+        linear-gradient(180deg, var(--color-bg-deep) 0%, var(--color-bg-mid) 45%, #0c1222 100%);
+    pointer-events: none;
+}
+
+.app-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(1px 1px at 25% 25%, rgba(255, 255, 255, 0.12) 0, transparent 100%),
+        radial-gradient(1px 1px at 75% 60%, rgba(255, 255, 255, 0.08) 0, transparent 100%);
+    opacity: 0.5;
+}
+
+.app-shell {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(10, 14, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.app-top-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: -0.02em;
+    color: #fff;
+    text-decoration: none;
+}
+
+.app-brand:hover {
+    color: #fff;
+}
+
+.app-brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-accent), #5b9def);
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(44, 123, 229, 0.35);
+}
+
+.app-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.app-nav-link {
+    display: inline-block;
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--color-border);
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.app-nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.app-nav-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.app-nav-link--active {
+    background: var(--color-accent-soft);
+    border-color: rgba(44, 123, 229, 0.45);
+    color: #93c5fd;
+}
+
+.app-nav-link--ghost {
+    color: var(--color-text-muted);
+    background: transparent;
+}
+
+.app-nav-link--ghost:hover {
+    color: var(--color-text);
+}
+
+.ticker-strip {
+    overflow: hidden;
+    border-bottom: 1px solid var(--color-border);
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.ticker-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.ticker-scroll {
+    padding: 0.4rem 1.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.ticker-text {
+    display: inline-block;
+    animation: appTicker 18s linear infinite;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #93c5fd;
+}
+
+@keyframes appTicker {
+    0% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+/* Glass panel base */
+.glass-panel {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-card);
+}
+
+.glass-panel h2,
+.glass-panel h3 {
+    color: #f3f4f6;
+}
+
+.page-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.25rem 1.25rem 2.5rem;
+    width: 100%;
+}
