@@ -5,8 +5,9 @@ import random
 import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 from alienstocksim.views import generate_headline_batch
-from alienstocksim.pricing import set_last_price, TRADE_COMPANY
-from alienstocksim.models import NewsItem, PriceCache
+from alienstocksim.pricing import set_last_price, TRADE_COMPANY, get_last_price
+from alienstocksim.models import NewsItem, PriceCache, StockEntry
+from django.db.models import Sum
 
 class StockConsumer(AsyncWebsocketConsumer):
     connected_count = 0
@@ -72,16 +73,36 @@ class StockConsumer(AsyncWebsocketConsumer):
             await asyncio.sleep(interval) # Rate limits how fast data is sent
 
     # Predicts the price of the stock then send it
-    async def send_predicted_data(self, interval=10):
+    async def send_predicted_data(self, interval=5):
+        # Wait for real price to be set before starting
+        predicted_price = await asyncio.to_thread(get_last_price, TRADE_COMPANY)
+        last_total = await asyncio.to_thread(self._get_total_shares)
+
         while self.running:
-            price = await self.get_stock_price()
-            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", price)
-            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
+            await asyncio.sleep(interval)
+
+            current_total = await asyncio.to_thread(self._get_total_shares)
+            delta = current_total - last_total
+            last_total = current_total
+
+            # 1 share = 0.01% change
+            pct_change = delta * 0.001
+            predicted_price = round(predicted_price * (1 + pct_change), 2)
+
+            print(predicted_price)
+
+            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", predicted_price)
             await self.send(text_data=json.dumps({
-                "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
-                "price": price
+                "type": "stock_price",
+                "price": predicted_price
             }))
-            await asyncio.sleep(interval) # Rate limits how fast data is sent
+
+    @staticmethod
+    def _get_total_shares():
+        result = StockEntry.objects.filter(company=TRADE_COMPANY).aggregate(
+            total=Sum("quantity")
+        )
+        return result["total"] or 0
 
     @staticmethod
     def _append_to_cache(company, price):
@@ -94,7 +115,8 @@ class StockConsumer(AsyncWebsocketConsumer):
     # Simulating the stock price
     async def get_stock_price(self):
         await asyncio.sleep(0) 
-        return round(random.uniform(150, 200), 2)
+        return round(200)
+        #return round(random.uniform(150, 200), 2)
 
     # This works now
     # async def get_stock_price(self):

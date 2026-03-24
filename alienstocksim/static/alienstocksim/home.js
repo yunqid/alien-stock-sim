@@ -61,7 +61,6 @@ socket.onmessage = function(e) {
 
     if (dataPoint.type === "price_history") {
         // Pre-populate chart with cached points before live data arrives
-        console.log(dataPoint);
         dataPoint.datapoints.forEach(dp => {
             const time = new Date(dp.t * 1000).toLocaleTimeString();
             const price = dp.p / 100;  // cents → dollars
