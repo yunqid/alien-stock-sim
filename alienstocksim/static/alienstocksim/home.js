@@ -1,4 +1,4 @@
-const company = "TESTTESTEST"; // Change this later
+let company = "TESTTESTEST";
 let currentPrice = null;
 const MAX_HEADLINES = 20;
 
@@ -70,6 +70,8 @@ socket.onmessage = function(e) {
         chart.update('none');
         return;
     }
+
+    if (dataPoint.type === "stock_price" && dataPoint.company !== company) return;
 
     const time = new Date().toLocaleTimeString();
     currentPrice = dataPoint.price;
@@ -198,6 +200,26 @@ function addHeadline(data) {
     }
 }
 
+function switchCompany(newCompany) {
+    if (newCompany === company) return;
+    company = newCompany;
+
+    // Clear the chart
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.data.datasets[0].label = "";
+    chart.update('none');
+
+    // Ask the server for the new company's cache
+    socket.send(JSON.stringify({
+        type: "switch_company",
+        company: newCompany
+    }));
+
+    // Update the dropdown label
+    document.getElementById('chart_filter_btn').textContent = `${newCompany} ▾`;
+}
+
 window.onload= function () {
     fetchStats();
 
@@ -218,4 +240,30 @@ window.onload= function () {
             filterBtn.setAttribute('aria-expanded', 'false');
         });
     });
-    }
+
+    // Chart filter
+    const chartFilterBtn = document.getElementById('chart_filter_btn');
+    const chartFilterDropdown = document.getElementById('chart_filter_dropdown');
+
+    chartFilterBtn?.addEventListener('click', () => {
+        const open = chartFilterDropdown.classList.toggle('open');
+        chartFilterBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!chartFilterBtn || !chartFilterDropdown) return;
+        if (!chartFilterBtn.contains(e.target) && !chartFilterDropdown.contains(e.target)) {
+            chartFilterDropdown.classList.remove('open');
+            chartFilterBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    document.querySelectorAll('.chart_filter_option').forEach(option => {
+        option.addEventListener('click', () => {
+            const selected = option.getAttribute('data-company');
+            switchCompany(selected);
+            chartFilterDropdown.classList.remove('open');
+            chartFilterBtn.setAttribute('aria-expanded', 'false');
+        });
+    });
+}

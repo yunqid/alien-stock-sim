@@ -90,6 +90,7 @@ class StockConsumer(AsyncWebsocketConsumer):
             await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
             await self.send(text_data=json.dumps({
                 "type": "stock_price",
+                "company": TRADE_COMPANY,
                 "price": price
             }))
 
@@ -128,6 +129,27 @@ class StockConsumer(AsyncWebsocketConsumer):
     #     data = response.json()
     #     pct_str = data["Global Quote"]["10. change percent"]
     #     return float(pct_str.strip("%"))
+
+    async def receive(self, text_data):
+        msg = json.loads(text_data)
+        if msg.get("type") == "switch_company":
+            await self.send_company_cache(msg["company"])
+
+    async def send_company_cache(self, company):
+        cache = await asyncio.to_thread(
+            lambda: PriceCache.objects.filter(company=company).first()
+        )
+        if cache and cache.datapoints:
+            await self.send(text_data=json.dumps({
+                "type": "price_history",
+                "datapoints": cache.datapoints[-10:]
+            }))
+        else:
+            # Send empty history so the chart clears cleanly
+            await self.send(text_data=json.dumps({
+                "type": "price_history",
+                "datapoints": []
+            }))
 
     async def send_headline_data(self):
         while True:
