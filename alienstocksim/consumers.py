@@ -24,7 +24,7 @@ class StockConsumer(AsyncWebsocketConsumer):
             StockConsumer.headline_task = asyncio.create_task(self.send_headline_data())
 
         cache = await asyncio.to_thread(
-            lambda: PriceCache.objects.filter(company="TESTTESTEST").first()
+            lambda: PriceCache.objects.filter(company=TRADE_COMPANY).first()
         )
         if cache and cache.datapoints:
             recent_points = cache.datapoints[-10:] # Gets the last 20 points
@@ -50,8 +50,7 @@ class StockConsumer(AsyncWebsocketConsumer):
             }))
 
         # Start the chart
-        asyncio.create_task(self.send_real_data())
-        asyncio.create_task(self.send_predicted_data())
+        asyncio.create_task(self.send_stock_data())
 
 
     # Disconnecting to the websocket
@@ -60,43 +59,43 @@ class StockConsumer(AsyncWebsocketConsumer):
         StockConsumer.connected_count -= 1
         self.running = False
 
-    # Waits for the stock price then send it
-    async def send_real_data(self, interval=5):
-        while self.running:
-            price = await self.get_stock_price()
-            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", price)
-            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
-            await self.send(text_data=json.dumps({
-                "type": "stock_price", #THIS LINE IS NEW FROM LEYUS CODE - davis
-                "price": price
-            }))
-            await asyncio.sleep(interval) # Rate limits how fast data is sent
-
-    # Predicts the price of the stock then send it
-    async def send_predicted_data(self, interval=5):
-        # Wait for real price to be set before starting
-        predicted_price = await asyncio.to_thread(get_last_price, TRADE_COMPANY)
+    # Calculates the stock
+    async def send_stock_data(self, interval=5):
+        price = await asyncio.to_thread(get_last_price, TRADE_COMPANY)
         last_total = await asyncio.to_thread(self._get_total_shares)
+        last_api_call = 0  # Timestamp of last API call
 
         while self.running:
-            await asyncio.sleep(interval)
+            # Get the actual change in stock
+            api_pct = 0
+            # Rate limits the amount of time the api is called
+            now = time.time()
+            if now - last_api_call >= 10: # Change the value here to adjust frequency
+                api_pct = await self.get_stock_price()
+                last_api_call = now
 
+            # Predicted change from change in shares held
             current_total = await asyncio.to_thread(self._get_total_shares)
             delta = current_total - last_total
             last_total = current_total
+            holdings_pct = delta * 0.001
 
-            # 1 share = 0.01% change
-            pct_change = delta * 0.001
-            predicted_price = round(predicted_price * (1 + pct_change), 2)
+            # Combine the pcts
+            # Adjust total_pct for more sophisticated calculations
+            total_pct = (api_pct / 100) + holdings_pct
+            price = round(price * (1 + total_pct), 2)
 
-            print(predicted_price)
-
-            await asyncio.to_thread(self._append_to_cache, "TESTTESTEST", predicted_price)
+            # Adding data to both caches
+            await asyncio.to_thread(self._append_to_cache, TRADE_COMPANY, price)
+            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
             await self.send(text_data=json.dumps({
                 "type": "stock_price",
-                "price": predicted_price
+                "price": price
             }))
 
+            await asyncio.sleep(interval)
+
+    # Gets the total number of shares held
     @staticmethod
     def _get_total_shares():
         result = StockEntry.objects.filter(company=TRADE_COMPANY).aggregate(
@@ -104,19 +103,18 @@ class StockConsumer(AsyncWebsocketConsumer):
         )
         return result["total"] or 0
 
+    # Gets the data to the cache
     @staticmethod
     def _append_to_cache(company, price):
         cache, _ = PriceCache.objects.get_or_create(company=company)
         cache.datapoints.append({"t": int(time.time()), "p": int(price * 100)})
-        cache.datapoints = cache.datapoints[-400:]  # 200 per stream
+        cache.datapoints = cache.datapoints[-20:]  # Keeps only 20 data points
         cache.save()
-
 
     # Simulating the stock price
     async def get_stock_price(self):
         await asyncio.sleep(0) 
-        return round(200)
-        #return round(random.uniform(150, 200), 2)
+        return round(random.uniform(-10, 10), 2)
 
     # This works now
     # async def get_stock_price(self):
@@ -128,7 +126,8 @@ class StockConsumer(AsyncWebsocketConsumer):
     #     }
     #     response = requests.get(url, params=params)
     #     data = response.json()
-    #     return data["Global Quote"]["05. price"]
+    #     pct_str = data["Global Quote"]["10. change percent"]
+    #     return float(pct_str.strip("%"))
 
     async def send_headline_data(self):
         while True:
