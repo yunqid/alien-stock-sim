@@ -267,3 +267,44 @@ window.onload= function () {
         });
     });
 }
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+}
+
+if (Notification.permission === 'granted') {
+    document.getElementById('notif_button').style.display = 'none'
+}
+
+async function enableNotifications() {
+    const permission = await Notification.requestPermission()
+    if (permission === 'granted') {
+        document.getElementById('notif_button').style.display = 'none'
+        const reg = await navigator.serviceWorker.ready
+        reg.showNotification("Notifications enabled!", {
+            body: "You'll receive stock alerts here."
+        })
+    }
+}
+
+setInterval(() => {
+    if (Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification("Test Alert", {
+                body: "This is a sample stock notification"
+            })
+        })
+    }
+}, 60000)
+
+
+// const previousPrice = ..., newPrice = ...
+// const changePercent = ((newPrice - previousPrice) / previousPrice) * 100
+
+// if (Math.abs(changePercent) >= 5 && Notification.permission === 'granted') {
+//     navigator.serviceWorker.controller.postMessage({
+//         type: 'PRICE_ALERT',
+//         ticker: 'AAPL',
+//         changePercent: changePercent.toFixed(2)
+//     })
+// }

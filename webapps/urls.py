@@ -28,4 +28,5 @@ urlpatterns = [
     path("trade/", views.trade_stock, name="trade_stock"),
     path("stats/<str:company>/", views.stock_stats, name="stock_stats"),
     path("accounts/", include('allauth.urls')),
+    path('sw.js', views.serve_sw, name='sw'),
 ]

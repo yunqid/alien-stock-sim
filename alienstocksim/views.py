@@ -3,13 +3,14 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from alienstocksim.forms import LoginForm, RegisterForm
 from alienstocksim.models import Profile, StockEntry
 from alienstocksim.pricing import get_last_price
 import json
-from django.http import JsonResponse
+import os
+from django.http import JsonResponse, FileResponse
 from google import genai
 from google.genai import types
+from django.conf import settings
 
 
 client = genai.Client()
@@ -57,7 +58,12 @@ def generate_headline_batch():
     return json.loads(response.text)
 
 
-# Helper functions
+def serve_sw(request):
+    path = os.path.join(settings.BASE_DIR, 'sw.js')
+    response = FileResponse(open(path, 'rb'), content_type = 'application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    return response
+
 
 def net_worth_live(profile):
     """

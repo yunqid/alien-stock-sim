@@ -389,6 +389,13 @@
     background: rgba(44, 123, 229, 0.2);
 }
 
+.btn_notif {
+    background: linear-gradient(180deg, #a78bfa, #7c3aed);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+
+
 @media (max-width: 900px) {
     .home-page-grid {
         flex-direction: column;
