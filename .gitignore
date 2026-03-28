@@ -6,3 +6,4 @@ my_env
 .idea
 .vscode
 .env
+dq.sqlite3
