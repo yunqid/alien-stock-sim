@@ -152,11 +152,21 @@ ASGI_APPLICATION = "webapps.asgi.application"
 
 # Note probably change this for deployment
 # Switch to redis
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer", # Stores stuff in memory
-    },
-}
+if os.environ.get('DJANGO_ENV') == 'production':
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("localhost", 6379)],
+            },
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 SITE_ID = 1
 
