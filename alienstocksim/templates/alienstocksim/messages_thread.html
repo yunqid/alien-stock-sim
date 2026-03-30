@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% load static %}
+    <link href="{% static 'alienstocksim/theme.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'alienstocksim/messages.css' %}" rel="stylesheet" type="text/css">
+    <title>Chat with {{ other_user.username }} — Alien Stock Sim</title>
+</head>
+<body class="app-body">
+    <div class="app-bg" aria-hidden="true"></div>
+    <div class="app-shell">
+        <header class="app-top">
+            <div class="app-top-inner">
+                <a href="{% url 'home' %}" class="app-brand">
+                    <span class="app-brand-mark" aria-hidden="true">👽</span>
+                    <span>Alien Stock Sim</span>
+                </a>
+                <nav class="app-nav-links" aria-label="Main">
+                    <a href="{% url 'home' %}" class="app-nav-link">Home</a>
+                    <a href="{% url 'profile' %}" class="app-nav-link">Profile</a>
+                    <a href="{% url 'messages_inbox' %}" class="app-nav-link app-nav-link--active nav-msg-link">
+                        Messages
+                        {% if has_unread_dm %}
+                        <span class="nav-unread-badge" title="{{ unread_dm_count }} unread" aria-label="{{ unread_dm_count }} unread direct message{{ unread_dm_count|pluralize }}"></span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'account_logout' %}" class="app-nav-link app-nav-link--ghost">Logout</a>
+                </nav>
+            </div>
+        </header>
+
+        <div class="page-inner messages-page">
+            <div class="thread-header">
+                <a href="{% url 'messages_inbox' %}" class="back-link">← Inbox</a>
+                <h1>{{ other_user.username }}</h1>
+                <a href="{% url 'profile_user' other_user.username %}" class="back-link">Profile</a>
+            </div>
+
+            {% if messages %}
+            <ul class="msg-alert-list">
+                {% for message in messages %}
+                <li class="msg-alert {% if 'error' in message.tags %}msg-alert--error{% elif 'warning' in message.tags %}msg-alert--warning{% elif 'success' in message.tags %}msg-alert--success{% else %}msg-alert--info{% endif %}">
+                    {{ message }}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            <ul class="msg-bubble-list" aria-label="Conversation">
+                {% for m in messages_list %}
+                <li class="msg-bubble {% if m.sender_id == user.id %}msg-bubble--mine{% else %}msg-bubble--theirs{% endif %}">
+                    {{ m.body }}
+                    <span class="msg-meta">{{ m.created_at }}</span>
+                </li>
+                {% empty %}
+                <li class="messages-empty">No messages yet. Send the first one below.</li>
+                {% endfor %}
+            </ul>
+
+            <form method="post" action="{% url 'messages_thread' other_user.username %}" class="compose-form glass-panel card">
+                {% csrf_token %}
+                <label for="msg-body">Message</label>
+                <textarea id="msg-body" name="body" class="compose-input" maxlength="5000" placeholder="Write a message…" required></textarea>
+                <div class="compose-actions">
+                    <button type="submit" class="btn-send">Send</button>
+                    <span class="compose-hint">Mutual followers only · up to 5,000 characters</span>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

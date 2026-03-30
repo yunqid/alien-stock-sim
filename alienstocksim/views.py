@@ -1,9 +1,14 @@
+from django.contrib import messages as django_messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
-from django.views.decorators.http import require_POST
-from alienstocksim.models import Profile, StockEntry
+from django.views.decorators.http import require_POST, require_http_methods
+from alienstocksim.models import DirectMessage, Profile, StockEntry
 from alienstocksim.pricing import get_last_price
 import json
 import os
@@ -63,6 +68,20 @@ def serve_sw(request):
     response = FileResponse(open(path, 'rb'), content_type = 'application/javascript')
     response['Service-Worker-Allowed'] = '/'
     return response
+
+
+def _profiles_mutual(a: Profile, b: Profile) -> bool:
+    """True if each follows the other (and they are not the same account)."""
+    if a.pk == b.pk:
+        return False
+    return b.followers.filter(pk=a.pk).exists() and a.followers.filter(pk=b.pk).exists()
+
+
+def _mutual_friends_qs(profile: Profile):
+    """Profiles I follow who also follow me."""
+    return profile.following.filter(followers=profile).select_related("user").order_by(
+        "user__username"
+    )
 
 
 def net_worth_live(profile):
@@ -161,6 +180,9 @@ def profile_action(request, username=None):
     viewer_profile, _ = Profile.objects.get_or_create(user=request.user)
     is_own_profile = user == request.user
     is_following = profile.followers.filter(pk=viewer_profile.pk).exists()
+    is_mutual = (
+        not is_own_profile and _profiles_mutual(viewer_profile, profile)
+    )
 
     followers_qs = profile.followers.select_related('user').prefetch_related('stocks')
     followers_list = [{'username': p.user.username} for p in followers_qs]
@@ -193,10 +215,27 @@ def profile_action(request, username=None):
         'friends_leaderboard': friends_leaderboard,
         'is_own_profile': is_own_profile,
         'is_following': is_following,
+        'is_mutual': is_mutual,
         'search_query': search_query,
         'search_results': search_results,
     }
     return render(request, 'alienstocksim/profile.html', context)
+
+
+def _safe_redirect_url(request, candidate: str, fallback: str) -> str:
+    """Block open redirects: same-site relative paths or full URLs on this host only."""
+    if not candidate:
+        return fallback
+    c = candidate.strip()
+    if c.startswith("/") and not c.startswith("//"):
+        return c
+    if url_has_allowed_host_and_scheme(
+        c,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return c
+    return fallback
 
 
 @login_required
@@ -204,7 +243,10 @@ def profile_action(request, username=None):
 def follow_toggle(request):
     username = (request.POST.get('username') or '').strip()
     action = request.POST.get('action')
-    next_url = request.POST.get('next') or reverse('home')
+    fallback = reverse('home')
+    next_url = _safe_redirect_url(
+        request, (request.POST.get('next') or '').strip(), fallback
+    )
 
     if not username or username == request.user.username:
         return redirect(next_url)
@@ -222,48 +264,184 @@ def follow_toggle(request):
 
 
 @login_required
-def trade_stock(request):
-    # Loading/getting data
-    data = json.loads(request.body)
-    company = data.get("company")
-    action = data.get("action")
-    price = float(data.get("price"))
-    price_int = int(data.get("price"))
+def messages_inbox(request):
+    me, _ = Profile.objects.get_or_create(user=request.user)
+    mutual = list(_mutual_friends_qs(me))
+    thread_rows = []
+    for p in mutual:
+        u = p.user
+        last = (
+            DirectMessage.objects.filter(
+                Q(sender=request.user, recipient=u) | Q(sender=u, recipient=request.user)
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        unread_count = DirectMessage.objects.filter(
+            sender=u, recipient=request.user, read_at__isnull=True
+        ).count()
+        thread_rows.append(
+            {
+                "username": u.username,
+                "last_preview": (last.body[:100] + "…")
+                if last and len(last.body) > 100
+                else (last.body if last else ""),
+                "last_at": last.created_at if last else None,
+                "unread_count": unread_count,
+            }
+        )
+    with_time = [r for r in thread_rows if r["last_at"]]
+    no_time = [r for r in thread_rows if not r["last_at"]]
+    with_time.sort(key=lambda r: r["last_at"], reverse=True)
+    thread_rows = with_time + no_time
 
-    # Creating the stock holding
-    profile = request.user.profile
-    holding, created = StockEntry.objects.get_or_create(profile=profile, company=company)
+    context = {"thread_rows": thread_rows}
+    return render(request, "alienstocksim/messages_inbox.html", context)
 
-    # Different behavior based on action
-    if action == "buy":
-        if profile.liquid_money < price_int:
-            return JsonResponse({"error": "insufficient_funds"}, status=400)
-        holding.quantity += 1
-        holding.cost_basis_paid += price_int
-        profile.liquid_money -= price_int
 
-    elif action == "sell":
-        if holding.quantity < 1:
-            return JsonResponse({"error": "no_shares"}, status=400)
-        if holding.quantity == 1:
-            holding.cost_basis_paid = 0
+@login_required
+@require_http_methods(["GET", "HEAD", "POST"])
+def messages_thread(request, username):
+    other = get_object_or_404(User, username=username)
+    if other.pk == request.user.pk:
+        return redirect("messages_inbox")
+
+    me_profile, _ = Profile.objects.get_or_create(user=request.user)
+    other_profile = get_object_or_404(Profile, user=other)
+
+    if not _profiles_mutual(me_profile, other_profile):
+        django_messages.error(
+            request,
+            "You can only message players who follow you back (mutual followers).",
+        )
+        return redirect("messages_inbox")
+
+    if request.method == "POST":
+        body = (request.POST.get("body") or "").strip()
+        if not body:
+            django_messages.warning(request, "Message cannot be empty.")
+        elif len(body) > 5000:
+            django_messages.error(request, "Message is too long.")
         else:
-            holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity
-        holding.quantity -= 1
-        profile.liquid_money += price_int
+            DirectMessage.objects.create(
+                sender=request.user,
+                recipient=other,
+                body=body,
+            )
+            django_messages.success(request, "Message sent.")
+        return redirect(reverse("messages_thread", args=[username]))
 
-    # Saving the model
-    holding.save()
-    profile.save()
+    # Mark messages from this sender as read now that the recipient opened the thread.
+    DirectMessage.objects.filter(
+        recipient=request.user,
+        sender=other,
+        read_at__isnull=True,
+    ).update(read_at=timezone.now())
 
-    # Returning the response to front
-    return JsonResponse({
-        "quantity": holding.quantity,
-        "liquid_money": profile.liquid_money
-    })
+    qs = (
+        DirectMessage.objects.filter(
+            Q(sender=request.user, recipient=other)
+            | Q(sender=other, recipient=request.user)
+        )
+        .select_related("sender", "recipient")
+        .order_by("created_at")
+    )
 
+    context = {
+        "other_user": other,
+        "messages_list": list(qs),
+    }
+    return render(request, "alienstocksim/messages_thread.html", context)
+
+
+@login_required
+@require_POST
+def trade_stock(request):
+    """
+    Execute one share buy/sell for the authenticated user only.
+    Uses select_for_update + atomic to prevent race conditions on balance and quantity.
+    """
+    try:
+        data = json.loads(request.body.decode("utf-8") if request.body else "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "invalid_json"}, status=400)
+
+    company = (data.get("company") or "").strip()
+    if not company or len(company) > 200:
+        return JsonResponse({"error": "invalid_company"}, status=400)
+
+    action = data.get("action")
+    if action not in ("buy", "sell"):
+        return JsonResponse({"error": "invalid_action"}, status=400)
+
+    raw_price = data.get("price")
+    try:
+        price = float(raw_price)
+        price_int = int(raw_price)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "invalid_price"}, status=400)
+
+    if price_int <= 0 or price < 0:
+        return JsonResponse({"error": "invalid_price"}, status=400)
+
+    try:
+        with transaction.atomic():
+            # Ensure profile row exists, then lock it for the whole trade.
+            Profile.objects.get_or_create(user=request.user)
+            profile = Profile.objects.select_for_update().get(user=request.user)
+
+            try:
+                holding = StockEntry.objects.select_for_update().get(
+                    profile=profile, company=company
+                )
+            except StockEntry.DoesNotExist:
+                try:
+                    holding = StockEntry.objects.create(
+                        profile=profile,
+                        company=company,
+                        quantity=0,
+                        cost_basis_paid=0,
+                    )
+                except IntegrityError:
+                    holding = StockEntry.objects.select_for_update().get(
+                        profile=profile, company=company
+                    )
+
+            if action == "buy":
+                if profile.liquid_money < price_int:
+                    return JsonResponse({"error": "insufficient_funds"}, status=400)
+                holding.quantity += 1
+                holding.cost_basis_paid += price_int
+                profile.liquid_money -= price_int
+            else:
+                if holding.quantity < 1:
+                    return JsonResponse({"error": "no_shares"}, status=400)
+                if holding.quantity == 1:
+                    holding.cost_basis_paid = 0
+                else:
+                    holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity
+                holding.quantity -= 1
+                profile.liquid_money += price_int
+
+            holding.save()
+            profile.save()
+    except Profile.DoesNotExist:
+        return JsonResponse({"error": "no_profile"}, status=400)
+
+    return JsonResponse(
+        {
+            "quantity": holding.quantity,
+            "liquid_money": profile.liquid_money,
+        }
+    )
+
+
+@login_required
 def stock_stats(request, company):
-    # Filters for users who has greater than 0 stock
+    company = (company or "").strip()
+    if not company or len(company) > 200:
+        return JsonResponse({"error": "invalid_company"}, status=400)
+
     holders = StockEntry.objects.filter(company=company, quantity__gt=0)
     # Getting relevant info 
     total_holders = holders.count()

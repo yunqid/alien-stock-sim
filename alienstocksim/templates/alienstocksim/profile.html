@@ -20,6 +20,12 @@
                 <nav class="app-nav-links" aria-label="Main">
                     <a href="{% url 'home' %}" class="app-nav-link">Home</a>
                     <a href="{% url 'profile' %}" class="app-nav-link app-nav-link--active">Profile</a>
+                    <a href="{% url 'messages_inbox' %}" class="app-nav-link nav-msg-link">
+                        Messages
+                        {% if has_unread_dm %}
+                        <span class="nav-unread-badge" title="{{ unread_dm_count }} unread" aria-label="{{ unread_dm_count }} unread direct message{{ unread_dm_count|pluralize }}"></span>
+                        {% endif %}
+                    </a>
                     <a href="{% url 'account_logout' %}" class="app-nav-link app-nav-link--ghost">Logout</a>
                 </nav>
             </div>
@@ -36,16 +42,21 @@
                         </p>
                     </div>
                     {% if not is_own_profile %}
-                    <form method="post" action="{% url 'follow_toggle' %}" class="follow-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="username" value="{{ profile_user.username }}">
-                        <input type="hidden" name="next" value="{{ request.path }}">
-                        {% if is_following %}
-                        <button type="submit" name="action" value="unfollow" class="btn btn-secondary">Unfollow</button>
-                        {% else %}
-                        <button type="submit" name="action" value="follow" class="btn btn-primary">Follow</button>
+                    <div class="profile-actions">
+                        <form method="post" action="{% url 'follow_toggle' %}" class="follow-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="username" value="{{ profile_user.username }}">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            {% if is_following %}
+                            <button type="submit" name="action" value="unfollow" class="btn btn-secondary">Unfollow</button>
+                            {% else %}
+                            <button type="submit" name="action" value="follow" class="btn btn-primary">Follow</button>
+                            {% endif %}
+                        </form>
+                        {% if is_mutual %}
+                        <a href="{% url 'messages_thread' profile_user.username %}" class="btn btn-message">Message</a>
                         {% endif %}
-                    </form>
+                    </div>
                     {% endif %}
                 </div>
             </div>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% load static %}
+    <link href="{% static 'alienstocksim/theme.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'alienstocksim/messages.css' %}" rel="stylesheet" type="text/css">
+    <title>Messages — Alien Stock Sim</title>
+</head>
+<body class="app-body">
+    <div class="app-bg" aria-hidden="true"></div>
+    <div class="app-shell">
+        <header class="app-top">
+            <div class="app-top-inner">
+                <a href="{% url 'home' %}" class="app-brand">
+                    <span class="app-brand-mark" aria-hidden="true">👽</span>
+                    <span>Alien Stock Sim</span>
+                </a>
+                <nav class="app-nav-links" aria-label="Main">
+                    <a href="{% url 'home' %}" class="app-nav-link">Home</a>
+                    <a href="{% url 'profile' %}" class="app-nav-link">Profile</a>
+                    <a href="{% url 'messages_inbox' %}" class="app-nav-link app-nav-link--active nav-msg-link">
+                        Messages
+                        {% if has_unread_dm %}
+                        <span class="nav-unread-badge" title="{{ unread_dm_count }} unread" aria-label="{{ unread_dm_count }} unread direct message{{ unread_dm_count|pluralize }}"></span>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'account_logout' %}" class="app-nav-link app-nav-link--ghost">Logout</a>
+                </nav>
+            </div>
+        </header>
+
+        <div class="page-inner messages-page">
+            <h1>Messages</h1>
+            <p class="messages-lead">
+                You can chat with players who <strong>follow you back</strong> (mutual followers). Open a thread below or visit their profile once you’re mutual.
+            </p>
+
+            {% if messages %}
+            <ul class="msg-alert-list">
+                {% for message in messages %}
+                <li class="msg-alert {% if 'error' in message.tags %}msg-alert--error{% elif 'warning' in message.tags %}msg-alert--warning{% elif 'success' in message.tags %}msg-alert--success{% else %}msg-alert--info{% endif %}">
+                    {{ message }}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if thread_rows %}
+            <ul class="thread-list">
+                {% for row in thread_rows %}
+                <li>
+                    <a href="{% url 'messages_thread' row.username %}" class="thread-link{% if row.unread_count %} thread-link--unread{% endif %}">
+                        <span class="thread-link-top">
+                            <span class="thread-link-user">{{ row.username }}</span>
+                            {% if row.unread_count %}
+                            <span class="thread-unread-dot" aria-label="{{ row.unread_count }} unread"></span>
+                            {% endif %}
+                        </span>
+                        {% if row.last_preview %}
+                        <span class="thread-link-preview">{{ row.last_preview }}</span>
+                        <span class="thread-link-meta">{{ row.last_at }}</span>
+                        {% else %}
+                        <span class="thread-link-preview muted">No messages yet — say hi.</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="messages-empty">No mutual friends yet. Follow someone and ask them to follow you back to start messaging.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -51,8 +51,42 @@
     font-size: 0.95rem;
 }
 
+.profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .follow-form {
     margin: 0;
+}
+
+.btn-message {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 1.25rem;
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    font-family: inherit;
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+    transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.btn-message:hover {
+    background: rgba(34, 197, 94, 0.25);
+    transform: translateY(-1px);
+    color: #bbf7d0;
+}
+
+.btn-message:focus-visible {
+    outline: 2px solid #22c55e;
+    outline-offset: 2px;
 }
 
 .btn {

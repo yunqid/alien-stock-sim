@@ -154,6 +154,25 @@
     color: var(--color-text);
 }
 
+/* Unread direct messages — red dot on top-right of Messages nav button */
+.nav-msg-link {
+    position: relative;
+    padding-right: 0.95rem;
+}
+
+.nav-msg-link .nav-unread-badge {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.45rem;
+    width: 9px;
+    height: 9px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(10, 14, 23, 0.95);
+    pointer-events: none;
+    z-index: 1;
+}
+
 .ticker-strip {
     overflow: hidden;
     border-bottom: 1px solid var(--color-border);

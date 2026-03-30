@@ -27,6 +27,12 @@
                 <nav class="app-nav-links" aria-label="Main">
                     <a href="{% url 'home' %}" class="app-nav-link app-nav-link--active">Home</a>
                     <a href="{% url 'profile' %}" class="app-nav-link">Profile</a>
+                    <a href="{% url 'messages_inbox' %}" class="app-nav-link nav-msg-link">
+                        Messages
+                        {% if has_unread_dm %}
+                        <span class="nav-unread-badge" title="{{ unread_dm_count }} unread" aria-label="{{ unread_dm_count }} unread direct message{{ unread_dm_count|pluralize }}"></span>
+                        {% endif %}
+                    </a>
                     <a href="{% url 'account_logout' %}" class="app-nav-link app-nav-link--ghost">Logout</a>
                 </nav>
             </div>

@@ -56,3 +56,24 @@ class PriceCache(models.Model):
 
     def __str__(self):
         return f"PriceCache({self.company}, {len(self.datapoints)} pts)"
+
+
+class DirectMessage(models.Model):
+    """One-to-one chat line; only mutual followers may exchange messages (enforced in views)."""
+
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="dm_sent")
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name="dm_received")
+    body = models.TextField(max_length=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    # When the recipient has opened the thread and seen this message (null = unread for recipient).
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["sender", "recipient", "-created_at"]),
+            models.Index(fields=["recipient", "read_at"]),
+        ]
+
+    def __str__(self):
+        return f"DM {self.sender_id}→{self.recipient_id} @ {self.created_at}"
