@@ -8,3 +8,4 @@ PyJWT
 google-genai
 python-dotenv
 channels_redis
+mysqlclient
