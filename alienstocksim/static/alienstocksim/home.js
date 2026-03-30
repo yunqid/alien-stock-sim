@@ -46,8 +46,8 @@ const chart = new Chart(ctx, {
     }
 });
 
-// Opening a connection to the websocket
-const socket = new WebSocket('ws://localhost:8000/ws/alienstocksim/');
+const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+const socket = new WebSocket(protocol + "//" + window.location.host + "/ws/alienstocksim/");
 
 socket.onmessage = function(e) {
     // Getting the value + time stamp
