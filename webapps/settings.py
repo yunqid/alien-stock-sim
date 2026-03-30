@@ -184,7 +184,10 @@ else:
         }
     }
 
-SITE_ID = 2
+if os.environ.get('DJANGO_ENV') == 'production':
+    SITE_ID = 2
+else:
+    SITE_ID = 1
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
