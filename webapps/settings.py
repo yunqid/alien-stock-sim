@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from configparser import ConfigParser
 
 load_dotenv()
 
@@ -23,8 +24,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+CONFIG = ConfigParser()
+CONFIG.read(BASE_DIR / "config.ini")
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=5%(!nzj)(qbvznb!gwnn5p8i6pu8_c69$ggjg9xf!y^g#4^!x'
+SECRET_KEY = CONFIG.get("Django", "secret")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
