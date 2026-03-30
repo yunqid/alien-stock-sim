@@ -208,3 +208,8 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {'access_type': 'online'},
     }
 }
+
+if os.environ.get('DJANGO_ENV') == 'production':
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
+else:
+    ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
