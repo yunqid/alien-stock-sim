@@ -53,6 +53,8 @@ class PriceCache(models.Model):
     company = models.CharField(max_length=200, unique=True)
     # Stores a list of {t: <unix timestamp>, p: <price cents>} dicts.
     datapoints = models.JSONField(default=list)
+    # Tracks the amount of the stock that is left
+    remaining = models.IntegerField(default=1000)
 
     def __str__(self):
         return f"PriceCache({self.company}, {len(self.datapoints)} pts)"

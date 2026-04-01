@@ -28,7 +28,8 @@ urlpatterns = [
     path('messages/', views.messages_inbox, name='messages_inbox'),
     path('messages/<str:username>/', views.messages_thread, name='messages_thread'),
     path("trade/", views.trade_stock, name="trade_stock"),
-    path("stats/<str:company>/", views.stock_stats, name="stock_stats"),
+    path("stock_stats/<str:company>/", views.stock_stats, name="stock_stats"),
+    path("user_stats/<str:company>/", views.user_stats, name="user_stats"),
     path("accounts/", include('allauth.urls')),
     path('sw.js', views.serve_sw, name='sw'),
 ]

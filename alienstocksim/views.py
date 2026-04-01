@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
-from alienstocksim.models import DirectMessage, Profile, StockEntry
+from alienstocksim.models import DirectMessage, Profile, StockEntry, PriceCache
 from alienstocksim.pricing import get_last_price
 import json
 import os
@@ -407,13 +407,21 @@ def trade_stock(request):
                         profile=profile, company=company
                     )
 
+            cache = PriceCache.objects.select_for_update().filter(company=company).first()
+            remaining = cache.remaining if cache else 1000
+
             if action == "buy":
+                if remaining <= 0:
+                    return JsonResponse({"error": "no_shares_available"}, status=400)
                 if profile.liquid_money < price_int:
                     return JsonResponse({"error": "insufficient_funds"}, status=400)
                 holding.quantity += 1
                 holding.cost_basis_paid += price_int
                 profile.liquid_money -= price_int
-            else:
+                if cache:
+                    cache.remaining -= 1
+                    cache.save()
+            else: 
                 if holding.quantity < 1:
                     return JsonResponse({"error": "no_shares"}, status=400)
                 if holding.quantity == 1:
@@ -422,6 +430,9 @@ def trade_stock(request):
                     holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity
                 holding.quantity -= 1
                 profile.liquid_money += price_int
+                if cache:
+                    cache.remaining += 1
+                    cache.save()
 
             holding.save()
             profile.save()
@@ -446,8 +457,32 @@ def stock_stats(request, company):
     # Getting relevant info 
     total_holders = holders.count()
     total_quantity = sum(h.quantity for h in holders)
+    # Getting the amount of shares left
+    cache = PriceCache.objects.filter(company=company).first()
+    shares_remaining = cache.remaining if cache else 1000
     # Returning the response to front
     return JsonResponse({
         "holders": total_holders,
-        "total_quantity": total_quantity
+        "total_quantity": total_quantity,
+        "shares_remaining": shares_remaining,
+    })
+
+@login_required
+def user_stats(request, company):
+    company = (company or "").strip()
+    if not company or len(company) > 200:
+        return JsonResponse({"error": "invalid_company"}, status=400)
+
+    # Getting the current user
+    profile, _ = Profile.objects.get_or_create(user=request.user)
+    # Getting the amount of the current stock held by the user
+    holding = StockEntry.objects.filter(profile=profile, company=company).first()
+    quantity = holding.quantity if holding else 0
+    # Getting the price of the company
+    price = get_last_price(company)
+
+    return JsonResponse({
+        "quantity": quantity,
+        "liquid_money": profile.liquid_money,
+        "price": price,
     })

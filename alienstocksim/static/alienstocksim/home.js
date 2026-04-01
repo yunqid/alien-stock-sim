@@ -100,6 +100,24 @@ socket.onmessage = function(e) {
     chart.update('none');
 };
 
+// Error Messages
+const ERROR_MESSAGES = {
+    insufficient_funds: "You don't have enough money to buy this share.",
+    no_shares_available: "There are no more shares available for this company.",
+    no_shares: "You don't own any shares in this company.",
+    invalid_price: "Invalid price — please wait for the chart to load.",
+    invalid_json: "Something went wrong. Please try again.",
+    invalid_company: "Invalid company selected.",
+    invalid_action: "Invalid action.",
+    no_profile: "Profile not found. Please refresh the page.",
+};
+
+// Basic Error Alert
+function showTradeError(code) {
+    const msg = ERROR_MESSAGES[code];
+    alert(msg);
+}
+
 async function buyStock() {
     // Communication with DJango
     const res = await fetch("/trade/", {
@@ -108,12 +126,17 @@ async function buyStock() {
         // Passes the stock company, action, and price
         body: JSON.stringify({ company, action: "buy", price: currentPrice }) 
     });
+    if (!res.ok) {
+        const err = await res.json();
+        showTradeError(err.error);
+        return;
+    }
     const data = await res.json();
     // Setting the UI
     document.getElementById("holdings").textContent = data.quantity;
     document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
     // Refreshing the screen
-    fetchStats();
+    fetchStockStats();
 }
 
 async function sellStock() {
@@ -124,21 +147,37 @@ async function sellStock() {
         // Passes the stock company, action, and price
         body: JSON.stringify({ company, action: "sell", price: currentPrice })
     });
+    if (!res.ok) {
+        const err = await res.json();
+        showTradeError(err.error);
+        return;
+    }
     const data = await res.json();
     // Setting the UI
     document.getElementById("holdings").textContent = data.quantity;
     document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
     // Refreshing the screen
-    fetchStats();
+    fetchStockStats();
 }
 
-async function fetchStats() {
+async function fetchStockStats() {
     // Communication with DJango
-    const res = await fetch(`/stats/${company}/`);
+    const res = await fetch(`/stock_stats/${company}/`);
     const data = await res.json();
     // Setting the UI
     document.getElementById("total_holders").textContent = data.holders;
     document.getElementById("total_shares").textContent = data.total_quantity;
+    document.getElementById("shares_remaining").textContent = data.shares_remaining;
+}
+
+async function fetchUserStats() {
+    // Communication with DJango
+    const res = await fetch(`/user_stats/${company}/`);
+    const data = await res.json();
+    // Setting the UI and the current price
+    document.getElementById("holdings").textContent = data.quantity;
+    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+    currentPrice = data.price;
 }
 
 // Getting CSRF Token
@@ -201,6 +240,9 @@ function addHeadline(data) {
 }
 
 function switchCompany(newCompany) {
+    fetchStockStats();
+    fetchUserStats();
+
     if (newCompany === company) return;
     company = newCompany;
 
@@ -221,7 +263,8 @@ function switchCompany(newCompany) {
 }
 
 window.onload= function () {
-    fetchStats();
+    fetchStockStats();
+    fetchUserStats();
 
     document.querySelectorAll('.news_filter_option').forEach(option => {
         option.addEventListener('click', () => {
