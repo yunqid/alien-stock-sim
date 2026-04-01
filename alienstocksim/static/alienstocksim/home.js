@@ -98,6 +98,20 @@ socket.onmessage = function(e) {
     }
 
     chart.update('none');
+    // Check if user owns this stock and price moved >= 5%
+    const holdings = parseInt(document.getElementById("holdings").textContent) || 0;
+    if (
+        holdings > 0 &&
+        Math.abs(change) >= 5 &&
+        Notification.permission === 'granted' &&
+        navigator.serviceWorker.controller
+    ) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'PRICE_ALERT',
+            ticker: company,
+            changePercent: change
+        });
+    }
 };
 
 // Error Messages
@@ -395,23 +409,11 @@ async function enableNotifications() {
 }
 
 setInterval(() => {
-    if (Notification.permission === 'granted') {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification("Test Alert", {
-                body: "This is a sample stock notification"
-            })
-        })
+    if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'PRICE_ALERT',
+            ticker: company,
+            changePercent: '5.00'
+        });
     }
-}, 60000)
-
-
-// const previousPrice = ..., newPrice = ...
-// const changePercent = ((newPrice - previousPrice) / previousPrice) * 100
-
-// if (Math.abs(changePercent) >= 5 && Notification.permission === 'granted') {
-//     navigator.serviceWorker.controller.postMessage({
-//         type: 'PRICE_ALERT',
-//         ticker: 'AAPL',
-//         changePercent: changePercent.toFixed(2)
-//     })
-// }
+}, 60000);
