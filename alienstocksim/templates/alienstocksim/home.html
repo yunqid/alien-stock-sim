@@ -110,6 +110,35 @@
                 </div>
             </main>
         </div>
+
+        <div class="modal-overlay" id="trade_modal" aria-modal="true" role="dialog" aria-labelledby="modal_title">
+            <div class="modal-box">
+                <h2 class="modal-title" id="modal_title"></h2>
+
+                <div class="modal-stats">
+                    <div class="modal-stat"><span class="modal-stat-label">Company</span><span class="modal-stat-value" id="modal_company"></span></div>
+                    <div class="modal-stat"><span class="modal-stat-label">Current price</span><span class="modal-stat-value" id="modal_price"></span></div>
+                    <div class="modal-stat"><span class="modal-stat-label">Shares held</span><span class="modal-stat-value" id="modal_holdings"></span></div>
+                    <div class="modal-stat"><span class="modal-stat-label">Liquid money</span><span class="modal-stat-value" id="modal_liquid"></span></div>
+                    <div class="modal-stat"><span class="modal-stat-label">Shares remaining</span><span class="modal-stat-value" id="modal_shares_remaining"></span></div>
+                </div>
+
+                <div class="modal-quantity-row">
+                    <label class="modal-stat-label" for="modal_quantity">Quantity</label>
+                    <input type="number" id="modal_quantity" class="modal-qty-input" value="1" min="1" />
+                </div>
+
+                <div class="modal-total-row">
+                    <span class="modal-stat-label" id="modal_total_label">Total cost</span>
+                    <span class="modal-total-value" id="modal_total"></span>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn_trade btn_cancel" id="modal_cancel">Cancel</button>
+                    <button type="button" class="btn_trade btn_confirm" id="modal_confirm">Confirm</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

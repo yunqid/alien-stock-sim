@@ -118,48 +118,103 @@ function showTradeError(code) {
     alert(msg);
 }
 
-async function buyStock() {
-    // Communication with DJango
-    const res = await fetch("/trade/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken()},
-        // Passes the stock company, action, and price
-        body: JSON.stringify({ company, action: "buy", price: currentPrice }) 
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        showTradeError(err.error);
-        return;
+let modalAction = null;
+let modalQuantity = 1;
+
+// Opening the popup window
+function openTradeModal(action) {
+    modalAction = action;
+    modalQuantity = 1;
+    
+    // Getting the values
+    const held = parseInt(document.getElementById("holdings").textContent) || 0;
+    const liquid = parseInt((document.getElementById("liquid_money").textContent || "0").replace(/[^0-9]/g, "")) || 0;
+    const remaining = parseInt(document.getElementById("shares_remaining").textContent) || 0;
+
+    // Setting the contents of the popup
+    document.getElementById("modal_quantity").value = 1;
+    document.getElementById("modal_title").textContent = action === "buy" ? "Confirm Purchase" : "Confirm Sale";
+    document.getElementById("modal_company").textContent = company;
+    document.getElementById("modal_price").textContent = `$${currentPrice.toFixed(2)}`;
+    document.getElementById("modal_holdings").textContent = held;
+    document.getElementById("modal_liquid").textContent = `$${liquid.toLocaleString()}`;
+    document.getElementById("modal_shares_remaining").textContent = remaining;
+    document.getElementById("modal_total_label").textContent = action === "buy" ? "Total cost" : "Total earnings";
+    document.getElementById("modal_confirm").className = `btn_trade ${action === "buy" ? "btn_buy" : "btn_sell"}`;
+
+    // Updating and opening the popup
+    updateModalQuantity();
+    document.getElementById("trade_modal").classList.add("open");
+}
+
+// Updating the popup
+function updateModalQuantity() {
+    // Getting the values
+    const held = parseInt(document.getElementById("holdings").textContent) || 0;
+    const remaining = parseInt(document.getElementById("shares_remaining").textContent) || 0;
+    const liquid = parseInt((document.getElementById("liquid_money").textContent || "0").replace(/[^0-9]/g, "")) || 0;
+    const input = document.getElementById("modal_quantity");
+
+    modalQuantity = parseInt(input.value) || 1;
+
+    // Bounding the input
+    if (modalAction === "buy") {
+        const maxAffordable = Math.floor(liquid / currentPrice);
+        const maxBuyable = Math.min(maxAffordable, remaining);
+        modalQuantity = Math.max(1, Math.min(modalQuantity, maxBuyable));
+        input.max = maxBuyable;
+    } else {
+        modalQuantity = Math.max(1, Math.min(modalQuantity, held));
+        input.max = held;
     }
-    const data = await res.json();
-    // Setting the UI
-    document.getElementById("holdings").textContent = data.quantity;
-    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
-    // Refreshing the screen
+
+    // Calculating and editing the cost/value
+    input.value = modalQuantity;
+    const total = (currentPrice * modalQuantity).toFixed(2);
+    document.getElementById("modal_total").textContent = `$${parseFloat(total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Closing the popup
+function closeTradeModal() {
+    document.getElementById("trade_modal").classList.remove("open");
+    modalAction = null;
+    modalQuantity = 1;
+}
+// Processing the trade
+async function confirmTrade() {
+    // Getting the amount to sell/buy
+    const qty = modalQuantity;
+    closeTradeModal();
+
+    // Selling/buying each stock individually
+    for (let i = 0; i < qty; i++) {
+        const res = await fetch("/trade/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+            body: JSON.stringify({ company, action: modalAction || (document.getElementById("modal_confirm").classList.contains("btn_buy") ? "buy" : "sell"), price: currentPrice })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            showTradeError(err.error);
+            break;
+        }
+        const data = await res.json();
+        document.getElementById("holdings").textContent = data.quantity;
+        document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+    }
+
     fetchStockStats();
 }
 
-async function sellStock() {
-    // Communication with DJango
-    const res = await fetch("/trade/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken()},
-        // Passes the stock company, action, and price
-        body: JSON.stringify({ company, action: "sell", price: currentPrice })
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        showTradeError(err.error);
-        return;
-    }
-    const data = await res.json();
-    // Setting the UI
-    document.getElementById("holdings").textContent = data.quantity;
-    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
-    // Refreshing the screen
-    fetchStockStats();
+// Buying or selling
+function buyStock() {
+    openTradeModal("buy");
+}
+function sellStock() {
+    openTradeModal("sell");
 }
 
+// Getting stock stats
 async function fetchStockStats() {
     // Communication with DJango
     const res = await fetch(`/stock_stats/${company}/`);
@@ -170,6 +225,7 @@ async function fetchStockStats() {
     document.getElementById("shares_remaining").textContent = data.shares_remaining;
 }
 
+// Getting user stats
 async function fetchUserStats() {
     // Communication with DJango
     const res = await fetch(`/user_stats/${company}/`);
@@ -308,6 +364,14 @@ window.onload= function () {
             chartFilterDropdown.classList.remove('open');
             chartFilterBtn.setAttribute('aria-expanded', 'false');
         });
+    });
+
+    // Trade popup
+    document.getElementById("modal_cancel").addEventListener("click", closeTradeModal);
+    document.getElementById("modal_confirm").addEventListener("click", confirmTrade);
+    document.getElementById("modal_quantity").addEventListener("input", updateModalQuantity);
+    document.getElementById("trade_modal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("trade_modal")) closeTradeModal();
     });
 }
 
