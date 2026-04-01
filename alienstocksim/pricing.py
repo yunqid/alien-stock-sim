@@ -3,7 +3,7 @@ Last-traded prices are pushed from the WebSocket consumer so HTTP views can read
 Keep TRADE_COMPANY in sync with the ticker used in static/alienstocksim/home.js.
 """
 
-TRADE_COMPANY = "TESTTESTEST"
+TRADE_COMPANY = "Pear"
 
 
 def _cache_key(company: str) -> str:

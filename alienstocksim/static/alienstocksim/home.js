@@ -1,4 +1,4 @@
-let company = "TESTTESTEST";
+let company = "Pear";
 let currentPrice = null;
 const MAX_HEADLINES = 20;
 
@@ -85,7 +85,7 @@ socket.onmessage = function(e) {
 
     // Creating + setting the legend value
     const sign = change >= 0 ? "+" : "";
-    chart.data.datasets[0].label = `Test Stock ${sign}${change}%`;
+    chart.data.datasets[0].label = `${company} ${sign}${change}%`;
 
     // Adding the data points
     chart.data.labels.push(time);
@@ -207,7 +207,7 @@ function switchCompany(newCompany) {
     // Clear the chart
     chart.data.labels = [];
     chart.data.datasets[0].data = [];
-    chart.data.datasets[0].label = "";
+    chart.data.datasets[0].label = newCompany;
     chart.update('none');
 
     // Ask the server for the new company's cache

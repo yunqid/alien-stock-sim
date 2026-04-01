@@ -9,9 +9,17 @@ from alienstocksim.pricing import set_last_price, TRADE_COMPANY, get_last_price
 from alienstocksim.models import NewsItem, PriceCache, StockEntry
 from django.db.models import Sum
 
+COMPANY_MAP = {
+    "AAPL": "Pear",
+    "GOOG": "Googlin",
+    "FOXA": "Fire Rage Inc.",
+    "COST": "BenefitCo",
+}
+
 class StockConsumer(AsyncWebsocketConsumer):
     connected_count = 0
     headline_task = None
+    stock_task = None
     headline_queue = []
 
     # Connecting to the websocket
@@ -50,7 +58,8 @@ class StockConsumer(AsyncWebsocketConsumer):
             }))
 
         # Start the chart
-        asyncio.create_task(self.send_stock_data())
+        if StockConsumer.stock_task is None:
+            StockConsumer.stock_task = asyncio.create_task(self.send_stock_data())
 
 
     # Disconnecting to the websocket
@@ -59,40 +68,48 @@ class StockConsumer(AsyncWebsocketConsumer):
         StockConsumer.connected_count -= 1
         self.running = False
 
-    # Calculates the stock
     async def send_stock_data(self, interval=5):
-        price = await asyncio.to_thread(get_last_price, TRADE_COMPANY)
+        prices = {
+            name: await asyncio.to_thread(get_last_price, name)
+            for name in COMPANY_MAP.values()
+        }
         last_total = await asyncio.to_thread(self._get_total_shares)
-        last_api_call = 0  # Timestamp of last API call
+        last_api_call = 0
+        ticks_to_spread = 20  # spread the API change over this many ticks
+        remaining_pcts = {name: 0.0 for name in COMPANY_MAP.values()}  # tracks leftover pct to apply
 
-        while self.running:
-            # Get the actual change in stock
-            api_pct = 0
-            # Rate limits the amount of time the api is called
+        while True:
             now = time.time()
-            if now - last_api_call >= 10: # Change the value here to adjust frequency
-                api_pct = await self.get_stock_price()
+            if now - last_api_call >= 21600:
+                for symbol, name in COMPANY_MAP.items():
+                    try:
+                        total_pct = await self.get_stock_price(symbol)
+                        # Divide the full change into equal slices
+                        remaining_pcts[name] = (total_pct / 100) / ticks_to_spread
+                    except:
+                        remaining_pcts[name] = 0
                 last_api_call = now
 
-            # Predicted change from change in shares held
             current_total = await asyncio.to_thread(self._get_total_shares)
             delta = current_total - last_total
             last_total = current_total
-            holdings_pct = delta * 0.001
 
-            # Combine the pcts
-            # Adjust total_pct for more sophisticated calculations
-            total_pct = (api_pct / 100) + holdings_pct
-            price = round(price * (1 + total_pct), 2)
+            for symbol, name in COMPANY_MAP.items():
+                noise = random.uniform(-0.005, 0.005)
+                holdings_pct = (delta * 0.001) if name == TRADE_COMPANY else 0
+                total_pct = remaining_pcts[name] + holdings_pct + noise
+                prices[name] = round(prices[name] * (1 + total_pct), 2)
 
-            # Adding data to both caches
-            await asyncio.to_thread(self._append_to_cache, TRADE_COMPANY, price)
-            await asyncio.to_thread(set_last_price, TRADE_COMPANY, price)
-            await self.send(text_data=json.dumps({
-                "type": "stock_price",
-                "company": TRADE_COMPANY,
-                "price": price
-            }))
+                await asyncio.to_thread(self._append_to_cache, name, prices[name])
+                await asyncio.to_thread(set_last_price, name, prices[name])
+                await self.channel_layer.group_send(
+                    "news_feed",
+                    {
+                        "type": "broadcast_price",
+                        "company": name,
+                        "price": prices[name]
+                    }
+                )
 
             await asyncio.sleep(interval)
 
@@ -112,23 +129,25 @@ class StockConsumer(AsyncWebsocketConsumer):
         cache.datapoints = cache.datapoints[-20:]  # Keeps only 20 data points
         cache.save()
 
-    # Simulating the stock price
-    async def get_stock_price(self):
-        await asyncio.sleep(0) 
-        return round(random.uniform(-10, 10), 2)
-
-    # This works now
-    # async def get_stock_price(self):
-    #     url = "https://www.alphavantage.co/query"
-    #     params = {
-    #         "function": "GLOBAL_QUOTE",
-    #         "symbol": "AAPL",
-    #         "apikey": "D1PBWCAD52UWQ786"
-    #     }
-    #     response = requests.get(url, params=params)
-    #     data = response.json()
-    #     pct_str = data["Global Quote"]["10. change percent"]
-    #     return float(pct_str.strip("%"))
+    # Returns Real Stock Data
+    async def get_stock_price(self, symbol):
+        url = "https://www.alphavantage.co/query"
+        params = {
+            "function": "GLOBAL_QUOTE",
+            "symbol": symbol,
+            "apikey": "D1PBWCAD52UWQ786"
+        }
+        response = await asyncio.to_thread(requests.get, url, params=params)
+        data = response.json()
+        pct_str = data["Global Quote"]["10. change percent"]
+        return float(pct_str.strip("%"))
+    
+    async def broadcast_price(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "stock_price",
+            "company": event["company"],
+            "price": event["price"]
+        }))
 
     async def receive(self, text_data):
         msg = json.loads(text_data)
