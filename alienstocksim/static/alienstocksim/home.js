@@ -98,20 +98,6 @@ socket.onmessage = function(e) {
     }
 
     chart.update('none');
-    // Check if user owns this stock and price moved >= 5%
-    const holdings = parseInt(document.getElementById("holdings").textContent) || 0;
-    if (
-        holdings > 0 &&
-        Math.abs(change) >= 5 &&
-        Notification.permission === 'granted' &&
-        navigator.serviceWorker.controller
-    ) {
-        navigator.serviceWorker.controller.postMessage({
-            type: 'PRICE_ALERT',
-            ticker: company,
-            changePercent: change
-        });
-    }
 };
 
 // Error Messages
@@ -408,12 +394,24 @@ async function enableNotifications() {
     }
 }
 
-setInterval(() => {
-    if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+let lastUnreadCount = 0;
+
+async function pollUnreadMessages() {
+    if (Notification.permission !== 'granted' || !navigator.serviceWorker.controller) return;
+
+    const res = await fetch('/unread_messages/');
+    const data = await res.json();
+
+    if (data.unread_count > lastUnreadCount && data.sender) {
         navigator.serviceWorker.controller.postMessage({
-            type: 'PRICE_ALERT',
-            ticker: company,
-            changePercent: '5.00'
+            type: 'NEW_MESSAGE',
+            sender: data.sender,
+            preview: data.preview,
+            url: data.thread_url,
         });
     }
-}, 60000);
+
+    lastUnreadCount = data.unread_count;
+}
+
+setInterval(pollUnreadMessages, 15000);

@@ -32,4 +32,5 @@ urlpatterns = [
     path("user_stats/<str:company>/", views.user_stats, name="user_stats"),
     path("accounts/", include('allauth.urls')),
     path('sw.js', views.serve_sw, name='sw'),
+    path('unread_messages/', views.unread_message_count, name='unread_messages'),
 ]

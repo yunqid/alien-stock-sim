@@ -70,6 +70,25 @@ def serve_sw(request):
     return response
 
 
+@login_required
+def unread_message_count(request):
+    latest = (
+        DirectMessage.objects.filter(recipient=request.user, read_at__isnull=True)
+        .select_related("sender")
+        .order_by("-created_at")
+        .first()
+    )
+    count = DirectMessage.objects.filter(
+        recipient=request.user, read_at__isnull=True
+    ).count()
+
+    return JsonResponse({
+        "unread_count": count,
+        "sender": latest.sender.username if latest else None,
+        "preview": latest.body[:80] if latest else None,
+        "thread_url": reverse("messages_thread", args=[latest.sender.username]) if latest else None,
+    })
+
 def _profiles_mutual(a: Profile, b: Profile) -> bool:
     """True if each follows the other (and they are not the same account)."""
     if a.pk == b.pk:

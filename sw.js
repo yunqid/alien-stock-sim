@@ -1,10 +1,16 @@
 self.addEventListener('message', (event) => {
-    if (event.data.type === 'PRICE_ALERT') {
-        const direction = event.data.changePercent > 0 ? '📈' : '📉';
+    if (event.data.type === 'NEW_MESSAGE') {
         self.registration.showNotification(
-            `${direction} ${event.data.ticker} moved ${event.data.changePercent}%`, {
-                body: 'Tap to view your portfolio',
+            `💬 New message from ${event.data.sender}`, {
+                body: event.data.preview,
+                data: { url: event.data.url },
             }
         );
     }
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data?.url || '/messages/';
+    event.waitUntil(clients.openWindow(url));
 });
