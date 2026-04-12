@@ -7,6 +7,11 @@
     <link href="{% static 'alienstocksim/theme.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'alienstocksim/messages.css' %}" rel="stylesheet" type="text/css">
     <title>Chat with {{ other_user.username }} — Alien Stock Sim</title>
+    <script>
+        const THREAD_OTHER_USERNAME = "{{ other_user.username|escapejs }}";
+        const CURRENT_USERNAME = "{{ user.username|escapejs }}";
+    </script>
+    <script src="{% static 'alienstocksim/messages_thread.js' %}"></script>
 </head>
 <body class="app-body">
     <div class="app-bg" aria-hidden="true"></div>
@@ -50,7 +55,8 @@
 
             <ul class="msg-bubble-list" aria-label="Conversation">
                 {% for m in messages_list %}
-                <li class="msg-bubble {% if m.sender_id == user.id %}msg-bubble--mine{% else %}msg-bubble--theirs{% endif %}">
+                <li class="msg-bubble {% if m.sender_id == user.id %}msg-bubble--mine{% else %}msg-bubble--theirs{% endif %}"
+                    data-msg-id="{{ m.pk }}">
                     {{ m.body }}
                     <span class="msg-meta">{{ m.created_at }}</span>
                 </li>

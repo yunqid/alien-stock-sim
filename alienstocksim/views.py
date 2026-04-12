@@ -380,6 +380,43 @@ def messages_thread(request, username):
     }
     return render(request, "alienstocksim/messages_thread.html", context)
 
+@login_required
+def messages_thread_poll(request, username):
+    other = get_object_or_404(User, username=username)
+    if other.pk == request.user.pk:
+        return JsonResponse({"error": "invalid"}, status=400)
+
+    my_profile, _ = Profile.objects.get_or_create(user=request.user)
+    other_profile = get_object_or_404(Profile, user=other)
+
+    if not _profiles_mutual(my_profile, other_profile):
+        return JsonResponse({"error": "not_mutual"}, status=403)
+
+    after_id = request.GET.get("after_id")
+    qs = DirectMessage.objects.filter(
+        Q(sender=request.user, recipient=other)
+        | Q(sender=other, recipient=request.user)
+    ).select_related("sender").order_by("created_at")
+
+    if after_id:
+        qs = qs.filter(pk__gt=after_id)
+
+    qs.filter(recipient=request.user, read_at__isnull=True).update(read_at=timezone.now())
+
+    messages_out = [
+        {
+            "id": m.pk,
+            "body": m.body,
+            "sender": m.sender.username,
+            "created_at": m.created_at.strftime("%b %d, %Y, %I:%M %p"),
+            "is_mine": m.sender == request.user,
+        }
+        for m in qs
+    ]
+
+    return JsonResponse({"messages": messages_out})
+
+
 
 @login_required
 @require_POST

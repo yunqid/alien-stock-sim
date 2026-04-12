@@ -34,4 +34,5 @@ urlpatterns = [
     path("accounts/", include('allauth.urls')),
     path('sw.js', views.serve_sw, name='sw'),
     path('unread_messages/', views.unread_message_count, name='unread_messages'),
+    path('messages/<str:username>/poll/', views.messages_thread_poll, name='messages_thread_poll'),
 ]
