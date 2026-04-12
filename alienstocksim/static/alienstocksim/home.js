@@ -98,6 +98,7 @@ socket.onmessage = function(e) {
     }
 
     chart.update('none');
+    updateTradeButtonsDisabled();
 };
 
 // Error Messages
@@ -121,8 +122,60 @@ function showTradeError(code) {
 let modalAction = null;
 let modalQuantity = 1;
 
+/** Server trade_stock charges int(price) whole dollars per share (Python int()). */
+function getTradingSnapshot() {
+    const heldRaw = parseInt(document.getElementById("holdings")?.textContent, 10);
+    const liquidRaw = parseInt((document.getElementById("liquid_money")?.textContent || "0").replace(/[^0-9]/g, ""), 10);
+    const remainingRaw = parseInt(document.getElementById("shares_remaining")?.textContent, 10);
+    const p = Number(currentPrice);
+    const priceInt = Math.floor(p);
+    const priceOk = Number.isFinite(p) && p > 0;
+    return {
+        held: Number.isFinite(heldRaw) ? heldRaw : 0,
+        liquid: Number.isFinite(liquidRaw) ? liquidRaw : 0,
+        remaining: Number.isFinite(remainingRaw) ? remainingRaw : 0,
+        priceInt,
+        priceOk,
+    };
+}
+
+function canAffordOneShare() {
+    const s = getTradingSnapshot();
+    if (!s.priceOk || s.priceInt < 1) return false;
+    return s.liquid >= s.priceInt && s.remaining >= 1;
+}
+
+function canSellOneShare() {
+    return getTradingSnapshot().held >= 1;
+}
+
+function updateTradeButtonsDisabled() {
+    const buyBtn = document.getElementById("buy_button");
+    const sellBtn = document.getElementById("sell_button");
+    if (!buyBtn || !sellBtn) return;
+    buyBtn.disabled = !canAffordOneShare();
+    sellBtn.disabled = !canSellOneShare();
+}
+
+function syncModalConfirmDisabled() {
+    const btn = document.getElementById("modal_confirm");
+    if (!btn || !modalAction) return;
+    if (modalAction === "buy") {
+        const s = getTradingSnapshot();
+        const maxAff = s.priceOk && s.priceInt > 0 ? Math.floor(s.liquid / s.priceInt) : 0;
+        const maxBuyable = Math.min(maxAff, s.remaining);
+        btn.disabled = maxBuyable < 1 || modalQuantity < 1 || modalQuantity > maxBuyable;
+    } else {
+        const held = getTradingSnapshot().held;
+        btn.disabled = held < 1 || modalQuantity < 1 || modalQuantity > held;
+    }
+}
+
 // Opening the popup window
 function openTradeModal(action) {
+    if (action === "buy" && !canAffordOneShare()) return;
+    if (action === "sell" && !canSellOneShare()) return;
+
     modalAction = action;
     modalQuantity = 1;
     
@@ -144,34 +197,55 @@ function openTradeModal(action) {
 
     // Updating and opening the popup
     updateModalQuantity();
+    syncModalConfirmDisabled();
     document.getElementById("trade_modal").classList.add("open");
 }
 
 // Updating the popup
 function updateModalQuantity() {
-    // Getting the values
     const held = parseInt(document.getElementById("holdings").textContent) || 0;
-    const remaining = parseInt(document.getElementById("shares_remaining").textContent) || 0;
-    const liquid = parseInt((document.getElementById("liquid_money").textContent || "0").replace(/[^0-9]/g, "")) || 0;
     const input = document.getElementById("modal_quantity");
+    const s = getTradingSnapshot();
 
-    modalQuantity = parseInt(input.value) || 1;
+    modalQuantity = parseInt(input.value, 10);
+    if (!Number.isFinite(modalQuantity) || modalQuantity < 0) modalQuantity = 0;
 
-    // Bounding the input
     if (modalAction === "buy") {
-        const maxAffordable = Math.floor(liquid / currentPrice);
-        const maxBuyable = Math.min(maxAffordable, remaining);
-        modalQuantity = Math.max(1, Math.min(modalQuantity, maxBuyable));
-        input.max = maxBuyable;
+        const maxAff = s.priceOk && s.priceInt > 0 ? Math.floor(s.liquid / s.priceInt) : 0;
+        const maxBuyable = Math.min(maxAff, s.remaining);
+        input.max = Math.max(0, maxBuyable);
+        if (maxBuyable < 1) {
+            input.min = 0;
+            modalQuantity = 0;
+            input.value = 0;
+        } else {
+            input.min = 1;
+            modalQuantity = Math.max(1, Math.min(modalQuantity, maxBuyable));
+            input.value = modalQuantity;
+        }
     } else {
-        modalQuantity = Math.max(1, Math.min(modalQuantity, held));
-        input.max = held;
+        input.min = held >= 1 ? 1 : 0;
+        input.max = Math.max(0, held);
+        if (held < 1) {
+            modalQuantity = 0;
+            input.value = 0;
+        } else {
+            modalQuantity = Math.max(1, Math.min(modalQuantity, held));
+            input.value = modalQuantity;
+        }
     }
 
-    // Calculating and editing the cost/value
-    input.value = modalQuantity;
-    const total = (currentPrice * modalQuantity).toFixed(2);
-    document.getElementById("modal_total").textContent = `$${parseFloat(total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    let totalStr;
+    if (modalAction === "buy" && modalQuantity < 1) {
+        totalStr = "0.00";
+    } else if (modalAction === "sell" && modalQuantity < 1) {
+        totalStr = "0.00";
+    } else {
+        const total = (Number(currentPrice) * modalQuantity).toFixed(2);
+        totalStr = parseFloat(total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    document.getElementById("modal_total").textContent = `$${totalStr}`;
+    syncModalConfirmDisabled();
 }
 
 // Closing the popup
@@ -182,8 +256,11 @@ function closeTradeModal() {
 }
 // Processing the trade
 async function confirmTrade() {
-    // Getting the amount to sell/buy
     const qty = modalQuantity;
+    if (!Number.isFinite(qty) || qty < 1) {
+        closeTradeModal();
+        return;
+    }
     closeTradeModal();
 
     // Selling/buying each stock individually
@@ -201,17 +278,21 @@ async function confirmTrade() {
         const data = await res.json();
         document.getElementById("holdings").textContent = data.quantity;
         document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+        updateTradeButtonsDisabled();
     }
 
-    fetchStockStats();
+    await fetchStockStats();
     refreshLeaderboard();
+    updateTradeButtonsDisabled();
 }
 
-// Buying or selling
 function buyStock() {
+    if (!canAffordOneShare()) return;
     openTradeModal("buy");
 }
+
 function sellStock() {
+    if (!canSellOneShare()) return;
     openTradeModal("sell");
 }
 
@@ -224,6 +305,7 @@ async function fetchStockStats() {
     document.getElementById("total_holders").textContent = data.holders;
     document.getElementById("total_shares").textContent = data.total_quantity;
     document.getElementById("shares_remaining").textContent = data.shares_remaining;
+    updateTradeButtonsDisabled();
 }
 
 const LEADERBOARD_POLL_MS = 8000;
@@ -291,6 +373,7 @@ async function fetchUserStats() {
     document.getElementById("holdings").textContent = data.quantity;
     document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
     currentPrice = data.price;
+    updateTradeButtonsDisabled();
 }
 
 // Getting CSRF Token
@@ -424,6 +507,9 @@ window.onload= function () {
             chartFilterBtn.setAttribute('aria-expanded', 'false');
         });
     });
+
+    document.getElementById("buy_button")?.addEventListener("click", () => buyStock());
+    document.getElementById("sell_button")?.addEventListener("click", () => sellStock());
 
     // Trade popup
     document.getElementById("modal_cancel").addEventListener("click", closeTradeModal);

@@ -103,8 +103,8 @@
                         <div class="stat"><span class="stat_label">Shares remaining</span><span id="shares_remaining" class="stat_value">—</span></div>
                     </div>
                     <div class="trading_actions">
-                        <button type="button" onclick="buyStock()" id="buy_button" class="btn_trade btn_buy">Buy</button>
-                        <button type="button" onclick="sellStock()" id="sell_button" class="btn_trade btn_sell">Sell</button>
+                        <button type="button" id="buy_button" class="btn_trade btn_buy">Buy</button>
+                        <button type="button" id="sell_button" class="btn_trade btn_sell">Sell</button>
                         <button type="button" onclick="enableNotifications()" id="notif_button" class="btn_trade btn_notif">Enable Alerts</button>
                     </div>
                 </div>
@@ -125,7 +125,7 @@
 
                 <div class="modal-quantity-row">
                     <label class="modal-stat-label" for="modal_quantity">Quantity</label>
-                    <input type="number" id="modal_quantity" class="modal-qty-input" value="1" min="1" />
+                    <input type="number" id="modal_quantity" class="modal-qty-input" value="1" min="0" />
                 </div>
 
                 <div class="modal-total-row">

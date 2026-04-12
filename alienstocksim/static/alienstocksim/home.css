@@ -203,6 +203,20 @@
     box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
 }
 
+.btn_trade:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: grayscale(0.35) brightness(0.85);
+    box-shadow: none;
+}
+
+.btn_trade:disabled:hover,
+.btn_trade:disabled:focus-visible {
+    transform: none;
+    filter: grayscale(0.35) brightness(0.85);
+}
+
 /* News */
 .news_panel {
     overflow: visible;
