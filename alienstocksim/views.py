@@ -114,6 +114,24 @@ def net_worth_live(profile):
     return total
 
 
+def _global_leaderboard_rows(for_user):
+    """Global ranking by live net worth; marks the requesting user's row."""
+    profiles = list(
+        Profile.objects.select_related("user").prefetch_related("stocks")
+    )
+    ranked = [(p, net_worth_live(p)) for p in profiles]
+    ranked.sort(key=lambda x: x[1], reverse=True)
+    return [
+        {
+            "rank": i + 1,
+            "username": p.user.username,
+            "net_worth": f"${net:,.2f}",
+            "is_current": (p.user == for_user),
+        }
+        for i, (p, net) in enumerate(ranked)
+    ]
+
+
 def build_holdings_for_profile(profile):
     """Holdings table: only DB rows with quantity > 0; prices from cache / cost basis from trades."""
     holdings = []
@@ -163,27 +181,17 @@ def _friends_leaderboard_rows(profile, highlight_profile):
 
 @login_required
 def home_action(request):
-    profiles = list(
-        Profile.objects.select_related('user').prefetch_related('stocks')
-    )
+    # Ensure this user has a Profile row so they appear on first visit (not only after /profile).
+    Profile.objects.get_or_create(user=request.user)
+    context = {"leaderboard": _global_leaderboard_rows(request.user)}
+    return render(request, "alienstocksim/home.html", context)
 
-    ranked = [(p, net_worth_live(p)) for p in profiles]
-    ranked.sort(key=lambda x: x[1], reverse=True)
 
-    leaderboard = [
-        {
-            'rank': i + 1,
-            'username': p.user.username,
-            'net_worth': f"${net:,.2f}",
-            'is_current': (p.user == request.user),
-        }
-        for i, (p, net) in enumerate(ranked)
-    ]
-
-    context = {
-        'leaderboard': leaderboard
-    }
-    return render(request, 'alienstocksim/home.html', context)
+@login_required
+def leaderboard_api(request):
+    """JSON for home sidebar: same ordering as server-rendered leaderboard."""
+    Profile.objects.get_or_create(user=request.user)
+    return JsonResponse({"rows": _global_leaderboard_rows(request.user)})
 
 
 

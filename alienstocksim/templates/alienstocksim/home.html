@@ -42,7 +42,7 @@
             <aside class="leaderboard_sidebar glass-panel" aria-labelledby="lb-heading">
                 <h2 id="lb-heading" class="leaderboard_title">Leaderboard</h2>
                 <p class="leaderboard_subtitle">Ranked by net worth</p>
-                <div class="leaderboard_list">
+                <div class="leaderboard_list" id="leaderboard_list">
                     {% for row in leaderboard %}
                     <div class="leaderboard_row {% if row.is_current %}current_user{% endif %} {% if row.rank == 1 %}rank_medal_1{% elif row.rank == 2 %}rank_medal_2{% elif row.rank == 3 %}rank_medal_3{% endif %}">
                         <span class="rank">{{ row.rank }}.</span>

@@ -30,6 +30,7 @@ urlpatterns = [
     path("trade/", views.trade_stock, name="trade_stock"),
     path("stock_stats/<str:company>/", views.stock_stats, name="stock_stats"),
     path("user_stats/<str:company>/", views.user_stats, name="user_stats"),
+    path("api/leaderboard/", views.leaderboard_api, name="leaderboard_api"),
     path("accounts/", include('allauth.urls')),
     path('sw.js', views.serve_sw, name='sw'),
     path('unread_messages/', views.unread_message_count, name='unread_messages'),

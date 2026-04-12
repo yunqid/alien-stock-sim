@@ -204,6 +204,7 @@ async function confirmTrade() {
     }
 
     fetchStockStats();
+    refreshLeaderboard();
 }
 
 // Buying or selling
@@ -223,6 +224,62 @@ async function fetchStockStats() {
     document.getElementById("total_holders").textContent = data.holders;
     document.getElementById("total_shares").textContent = data.total_quantity;
     document.getElementById("shares_remaining").textContent = data.shares_remaining;
+}
+
+const LEADERBOARD_POLL_MS = 8000;
+
+function profilePathForUser(username) {
+    return `/profile/${encodeURIComponent(username)}`;
+}
+
+function renderLeaderboardRows(rows) {
+    const container = document.getElementById("leaderboard_list");
+    if (!container) return;
+    container.replaceChildren();
+    if (!rows || !rows.length) {
+        const empty = document.createElement("div");
+        empty.className = "leaderboard_row leaderboard_empty";
+        empty.textContent = "No users yet.";
+        container.appendChild(empty);
+        return;
+    }
+    for (const row of rows) {
+        const div = document.createElement("div");
+        div.className = "leaderboard_row";
+        if (row.is_current) div.classList.add("current_user");
+        if (row.rank === 1) div.classList.add("rank_medal_1");
+        else if (row.rank === 2) div.classList.add("rank_medal_2");
+        else if (row.rank === 3) div.classList.add("rank_medal_3");
+
+        const rankSpan = document.createElement("span");
+        rankSpan.className = "rank";
+        rankSpan.textContent = `${row.rank}.`;
+
+        const link = document.createElement("a");
+        link.className = "username";
+        link.href = profilePathForUser(row.username);
+        link.textContent = row.username;
+
+        const worth = document.createElement("span");
+        worth.className = "net_worth";
+        worth.textContent = row.net_worth;
+
+        div.append(rankSpan, link, worth);
+        container.appendChild(div);
+    }
+}
+
+async function refreshLeaderboard() {
+    const container = document.getElementById("leaderboard_list");
+    if (!container) return;
+    try {
+        const res = await fetch("/api/leaderboard/");
+        if (!res.ok) return;
+        const data = await res.json();
+        renderLeaderboardRows(data.rows);
+    } catch (_) {
+        /* ignore transient network errors */
+    }
 }
 
 // Getting user stats
@@ -321,6 +378,8 @@ function switchCompany(newCompany) {
 window.onload= function () {
     fetchStockStats();
     fetchUserStats();
+    refreshLeaderboard();
+    setInterval(refreshLeaderboard, LEADERBOARD_POLL_MS);
 
     document.querySelectorAll('.news_filter_option').forEach(option => {
         option.addEventListener('click', () => {
