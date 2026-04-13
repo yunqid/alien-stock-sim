@@ -85,7 +85,8 @@ class StockConsumer(AsyncWebsocketConsumer):
                     try:
                         total_pct = await self.get_stock_price(symbol)
                         # Divide the full change into equal slices
-                        remaining_pcts[name] = (total_pct / 100) / ticks_to_spread
+                        # Multiplied so the user can actually see the change
+                        remaining_pcts[name] = total_pct / ticks_to_spread 
                     except:
                         remaining_pcts[name] = 0
                 last_api_call = now
