@@ -99,6 +99,7 @@ socket.onmessage = function(e) {
 
     chart.update('none');
     updateTradeButtonsDisabled();
+    closeTradeModal();
 };
 
 // Error Messages
@@ -263,12 +264,15 @@ async function confirmTrade() {
     }
     closeTradeModal();
 
+    bsPrice = currentPrice;
+
     // Selling/buying each stock individually
     for (let i = 0; i < qty; i++) {
         const res = await fetch("/trade/", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
-            body: JSON.stringify({ company, action: modalAction || (document.getElementById("modal_confirm").classList.contains("btn_buy") ? "buy" : "sell"), price: currentPrice })
+            body: JSON.stringify({ company, action: modalAction || 
+                (document.getElementById("modal_confirm").classList.contains("btn_buy") ? "buy" : "sell"), price: bsPrice})
         });
         if (!res.ok) {
             const err = await res.json();
@@ -436,9 +440,6 @@ function addHeadline(data) {
 }
 
 function switchCompany(newCompany) {
-    fetchStockStats();
-    fetchUserStats();
-
     if (newCompany === company) return;
     company = newCompany;
 
@@ -456,11 +457,12 @@ function switchCompany(newCompany) {
 
     // Update the dropdown label
     document.getElementById('chart_filter_btn').textContent = `${newCompany} ▾`;
+
+    fetchStockStats();
+    fetchUserStats();
 }
 
 window.onload= function () {
-    fetchStockStats();
-    fetchUserStats();
     refreshLeaderboard();
     setInterval(refreshLeaderboard, LEADERBOARD_POLL_MS);
 
@@ -518,6 +520,9 @@ window.onload= function () {
     document.getElementById("trade_modal").addEventListener("click", (e) => {
         if (e.target === document.getElementById("trade_modal")) closeTradeModal();
     });
+
+    fetchStockStats();
+    fetchUserStats();
 }
 
 if ('serviceWorker' in navigator) {
