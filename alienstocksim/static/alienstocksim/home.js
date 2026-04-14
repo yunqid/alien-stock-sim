@@ -106,12 +106,13 @@ socket.onmessage = function(e) {
 const ERROR_MESSAGES = {
     insufficient_funds: "You don't have enough money to buy this share.",
     no_shares_available: "There are no more shares available for this company.",
-    no_shares: "You don't own any shares in this company.",
+    no_shares: "You don't own enough shares of this company.",
     invalid_price: "Invalid price — please wait for the chart to load.",
     invalid_json: "Something went wrong. Please try again.",
     invalid_company: "Invalid company selected.",
     invalid_action: "Invalid action.",
     no_profile: "Profile not found. Please refresh the page.",
+    invalid_amount: "Invalid amount of stocks to purchase/sell",
 };
 
 // Basic Error Alert
@@ -262,28 +263,29 @@ async function confirmTrade() {
         closeTradeModal();
         return;
     }
-    closeTradeModal();
 
     bsPrice = currentPrice;
 
     // Selling/buying each stock individually
-    for (let i = 0; i < qty; i++) {
-        const res = await fetch("/trade/", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
-            body: JSON.stringify({ company, action: modalAction || 
-                (document.getElementById("modal_confirm").classList.contains("btn_buy") ? "buy" : "sell"), price: bsPrice})
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            showTradeError(err.error);
-            break;
-        }
-        const data = await res.json();
-        document.getElementById("holdings").textContent = data.quantity;
-        document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
-        updateTradeButtonsDisabled();
+    const res = await fetch("/trade/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+        body: JSON.stringify({ company, action: modalAction || 
+            (document.getElementById("modal_confirm").classList.contains("btn_buy") ? "buy" : "sell"), 
+            price: bsPrice, amount: qty})
+    });
+
+    closeTradeModal();
+
+    if (!res.ok) {
+        const err = await res.json();
+        showTradeError(err.error);
+        return;
     }
+    const data = await res.json();
+    document.getElementById("holdings").textContent = data.quantity;
+    document.getElementById("liquid_money").textContent = `$${data.liquid_money}`;
+    updateTradeButtonsDisabled();
 
     await fetchStockStats();
     refreshLeaderboard();

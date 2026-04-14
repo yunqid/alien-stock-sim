@@ -447,6 +447,15 @@ def trade_stock(request):
 
     if price_int <= 0 or price < 0:
         return JsonResponse({"error": "invalid_price"}, status=400)
+    
+    amount = data.get("amount")
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "invalid_amount"}, status=400)
+    
+    if amount < 0:
+        return JsonResponse({"error": "invalid_amount"}, status=400)
 
     try:
         with transaction.atomic():
@@ -475,27 +484,27 @@ def trade_stock(request):
             remaining = cache.remaining if cache else 1000
 
             if action == "buy":
-                if remaining <= 0:
+                if remaining < amount:
                     return JsonResponse({"error": "no_shares_available"}, status=400)
-                if profile.liquid_money < price_int:
+                if profile.liquid_money < price_int * amount:
                     return JsonResponse({"error": "insufficient_funds"}, status=400)
-                holding.quantity += 1
-                holding.cost_basis_paid += price_int
-                profile.liquid_money -= price_int
+                holding.quantity += amount
+                holding.cost_basis_paid += price_int * amount
+                profile.liquid_money -= price_int * amount
                 if cache:
-                    cache.remaining -= 1
+                    cache.remaining -= amount
                     cache.save()
             else: 
-                if holding.quantity < 1:
+                if holding.quantity < amount:
                     return JsonResponse({"error": "no_shares"}, status=400)
-                if holding.quantity == 1:
+                if holding.quantity == amount:
                     holding.cost_basis_paid = 0
                 else:
-                    holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity
-                holding.quantity -= 1
-                profile.liquid_money += price_int
+                    holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity * amount
+                holding.quantity -= amount
+                profile.liquid_money += price_int * amount
                 if cache:
-                    cache.remaining += 1
+                    cache.remaining += amount
                     cache.save()
 
             holding.save()
