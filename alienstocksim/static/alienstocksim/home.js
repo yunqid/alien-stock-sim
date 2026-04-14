@@ -112,7 +112,8 @@ const ERROR_MESSAGES = {
     invalid_company: "Invalid company selected.",
     invalid_action: "Invalid action.",
     no_profile: "Profile not found. Please refresh the page.",
-    invalid_amount: "Invalid amount of stocks to purchase/sell",
+    invalid_amount: "Invalid amount of stocks to purchase/sell.",
+    server_busy: "server busy please try again later.",
 };
 
 // Basic Error Alert

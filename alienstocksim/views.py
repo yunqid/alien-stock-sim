@@ -16,6 +16,8 @@ from django.http import JsonResponse, FileResponse
 from google import genai
 from google.genai import types
 from django.conf import settings
+import time
+from django.db.utils import OperationalError
 
 
 client = genai.Client()
@@ -456,68 +458,72 @@ def trade_stock(request):
     
     if amount < 0:
         return JsonResponse({"error": "invalid_amount"}, status=400)
+    
+    for attempt in range(5):
+        try:
+            with transaction.atomic():
+                # Ensure profile row exists, then lock it for the whole trade.
+                Profile.objects.get_or_create(user=request.user)
+                profile = Profile.objects.select_for_update().get(user=request.user)
+                cache = PriceCache.objects.select_for_update().filter(company=company).first()
 
-    try:
-        with transaction.atomic():
-            # Ensure profile row exists, then lock it for the whole trade.
-            Profile.objects.get_or_create(user=request.user)
-            profile = Profile.objects.select_for_update().get(user=request.user)
-
-            try:
-                holding = StockEntry.objects.select_for_update().get(
-                    profile=profile, company=company
+                StockEntry.objects.get_or_create(
+                    profile=profile,
+                    company=company,
+                    defaults={"quantity": 0, "cost_basis_paid": 0},
                 )
-            except StockEntry.DoesNotExist:
-                try:
-                    holding = StockEntry.objects.create(
-                        profile=profile,
-                        company=company,
-                        quantity=0,
-                        cost_basis_paid=0,
-                    )
-                except IntegrityError:
-                    holding = StockEntry.objects.select_for_update().get(
-                        profile=profile, company=company
-                    )
+                holding = StockEntry.objects.select_for_update().get(
+                    profile=profile, 
+                    company=company,
+                )
+                
+                remaining = cache.remaining if cache else 1000
 
-            cache = PriceCache.objects.select_for_update().filter(company=company).first()
-            remaining = cache.remaining if cache else 1000
+                if action == "buy":
+                    if remaining < amount:
+                        return JsonResponse({"error": "no_shares_available"}, status=400)
+                    if profile.liquid_money < price_int * amount:
+                        return JsonResponse({"error": "insufficient_funds"}, status=400)
+                    holding.quantity += amount
+                    holding.cost_basis_paid += price_int * amount
+                    profile.liquid_money -= price_int * amount
+                    if cache:
+                        cache.remaining -= amount
+                        cache.save()
+                else: 
+                    if holding.quantity < amount:
+                        return JsonResponse({"error": "no_shares"}, status=400)
+                    if holding.quantity == amount:
+                        holding.cost_basis_paid = 0
+                    else:
+                        holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity * amount
+                    holding.quantity -= amount
+                    profile.liquid_money += price_int * amount
+                    if cache:
+                        cache.remaining += amount
+                        cache.save()
 
-            if action == "buy":
-                if remaining < amount:
-                    return JsonResponse({"error": "no_shares_available"}, status=400)
-                if profile.liquid_money < price_int * amount:
-                    return JsonResponse({"error": "insufficient_funds"}, status=400)
-                holding.quantity += amount
-                holding.cost_basis_paid += price_int * amount
-                profile.liquid_money -= price_int * amount
-                if cache:
-                    cache.remaining -= amount
-                    cache.save()
-            else: 
-                if holding.quantity < amount:
-                    return JsonResponse({"error": "no_shares"}, status=400)
-                if holding.quantity == amount:
-                    holding.cost_basis_paid = 0
-                else:
-                    holding.cost_basis_paid -= holding.cost_basis_paid // holding.quantity * amount
-                holding.quantity -= amount
-                profile.liquid_money += price_int * amount
-                if cache:
-                    cache.remaining += amount
-                    cache.save()
+                holding.save()
+                profile.save()
 
-            holding.save()
-            profile.save()
-    except Profile.DoesNotExist:
-        return JsonResponse({"error": "no_profile"}, status=400)
+        except OperationalError as e:
+            if attempt < 4:
+                time.sleep(0.3) 
+                continue
+            return JsonResponse({"error": "server_error"}, status=500)
 
-    return JsonResponse(
-        {
-            "quantity": holding.quantity,
-            "liquid_money": profile.liquid_money,
-        }
-    )
+        except Profile.DoesNotExist:
+            return JsonResponse({"error": "no_profile"}, status=400)
+        
+        except Exception as e:
+            return JsonResponse({"error": "server_error"}, status=500)
+
+        return JsonResponse(
+            {
+                "quantity": holding.quantity,
+                "liquid_money": profile.liquid_money,
+            }
+        )
 
 
 @login_required
