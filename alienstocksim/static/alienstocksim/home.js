@@ -5,6 +5,7 @@ const MAX_HEADLINES = 20;
 // Getting the chart element
 const ctx = document.getElementById('chart').getContext('2d');
 
+// Setting up the chart stuff
 let data = {
     labels: [],
     datasets: [{
@@ -46,19 +47,23 @@ const chart = new Chart(ctx, {
     }
 });
 
+// Setting the websocket
 const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const socket = new WebSocket(protocol + "//" + window.location.host + "/ws/alienstocksim/");
 
+// Run these when recieving a message
 socket.onmessage = function(e) {
     // Getting the value + time stamp
     const dataPoint = JSON.parse(e.data);
 
+    // Recieving news headline
     if (dataPoint.type === "news_headline") {
         console.log("headline received:", dataPoint.headline);  // check this in browser devtools
         addHeadline(dataPoint.headline);
         return;
     }
 
+    // Recieving price history
     if (dataPoint.type === "price_history") {
         // Pre-populate chart with cached points before live data arrives
         dataPoint.datapoints.forEach(dp => {
@@ -71,6 +76,7 @@ socket.onmessage = function(e) {
         return;
     }
 
+    // Ignoring updates that is not the compant current in view
     if (dataPoint.type === "stock_price" && dataPoint.company !== company) return;
 
     const time = new Date().toLocaleTimeString();
@@ -97,9 +103,9 @@ socket.onmessage = function(e) {
         chart.data.datasets[0].data.shift();
     }
 
-    chart.update('none');
-    updateTradeButtonsDisabled();
-    closeTradeModal();
+    chart.update('none'); 
+    updateTradeButtonsDisabled(); 
+    closeTradeModal(); // Closes trade popup to refresh price
 };
 
 // Error Messages
@@ -213,6 +219,7 @@ function updateModalQuantity() {
     modalQuantity = parseInt(input.value, 10);
     if (!Number.isFinite(modalQuantity) || modalQuantity < 0) modalQuantity = 0;
 
+    // Limiting the range of possible number of stocks to buy/sell
     if (modalAction === "buy") {
         const maxAff = s.priceOk && s.priceInt > 0 ? Math.floor(s.liquid / s.priceInt) : 0;
         const maxBuyable = Math.min(maxAff, s.remaining);
@@ -238,6 +245,7 @@ function updateModalQuantity() {
         }
     }
 
+    // Updating the modal display
     let totalStr;
     if (modalAction === "buy" && modalQuantity < 1) {
         totalStr = "0.00";
@@ -257,6 +265,7 @@ function closeTradeModal() {
     modalAction = null;
     modalQuantity = 1;
 }
+
 // Processing the trade
 async function confirmTrade() {
     const qty = modalQuantity;
@@ -267,7 +276,7 @@ async function confirmTrade() {
 
     bsPrice = currentPrice;
 
-    // Selling/buying each stock individually
+    // buy/sell the stocks all at once
     const res = await fetch("/trade/", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
@@ -293,11 +302,11 @@ async function confirmTrade() {
     updateTradeButtonsDisabled();
 }
 
+// Basic functions for opening up the trade popup with the right action
 function buyStock() {
     if (!canAffordOneShare()) return;
     openTradeModal("buy");
 }
-
 function sellStock() {
     if (!canSellOneShare()) return;
     openTradeModal("sell");
@@ -442,6 +451,7 @@ function addHeadline(data) {
     }
 }
 
+// Switching company
 function switchCompany(newCompany) {
     if (newCompany === company) return;
     company = newCompany;

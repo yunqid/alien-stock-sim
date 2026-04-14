@@ -459,14 +459,17 @@ def trade_stock(request):
     if amount < 0:
         return JsonResponse({"error": "invalid_amount"}, status=400)
     
+    # Tries the transaction up to 5 times before failing
     for attempt in range(5):
         try:
             with transaction.atomic():
-                # Ensure profile row exists, then lock it for the whole trade.
+                # Make sure that profile and cache exists
+                # Also locks them
                 Profile.objects.get_or_create(user=request.user)
                 profile = Profile.objects.select_for_update().get(user=request.user)
                 cache = PriceCache.objects.select_for_update().filter(company=company).first()
 
+                # Getting the stock entry
                 StockEntry.objects.get_or_create(
                     profile=profile,
                     company=company,
@@ -479,6 +482,7 @@ def trade_stock(request):
                 
                 remaining = cache.remaining if cache else 1000
 
+                # Dealing with the buy/sell actions
                 if action == "buy":
                     if remaining < amount:
                         return JsonResponse({"error": "no_shares_available"}, status=400)
@@ -506,6 +510,8 @@ def trade_stock(request):
                 holding.save()
                 profile.save()
 
+        # Tries the transaction multiple times
+        # This only happens if the database is locked
         except OperationalError as e:
             if attempt < 4:
                 time.sleep(0.3) 
