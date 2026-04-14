@@ -21,6 +21,7 @@ class StockConsumer(AsyncWebsocketConsumer):
     headline_task = None
     stock_task = None
     headline_queue = []
+    news_impact = {}
 
     # Connecting to the websocket
     async def connect(self):
@@ -98,8 +99,11 @@ class StockConsumer(AsyncWebsocketConsumer):
             for symbol, name in COMPANY_MAP.items():
                 noise = random.uniform(-0.005, 0.005)
                 holdings_pct = (delta * 0.001) if name == TRADE_COMPANY else 0
-                total_pct = remaining_pcts[name] + holdings_pct + noise
+                news_pct = StockConsumer.news_impact.pop(name, 0)
+                total_pct = remaining_pcts[name] + holdings_pct + noise + news_pct
                 prices[name] = round(prices[name] * (1 + total_pct), 2)
+
+                print(news_pct)
 
                 await asyncio.to_thread(self._append_to_cache, name, prices[name])
                 await asyncio.to_thread(set_last_price, name, prices[name])
@@ -181,6 +185,11 @@ class StockConsumer(AsyncWebsocketConsumer):
                     print(f"Batch fetched: {len(StockConsumer.headline_queue)} headlines")
 
                 headline = StockConsumer.headline_queue.pop()
+
+                # Calculating the impact of the headline
+                impact_value = {1: 0.05, 2: 0.1, 3: 0.2}.get(int(headline["severity"]), 0)
+                impact_value = impact_value if headline["direction"] == "up" else -impact_value
+                StockConsumer.news_impact[headline["company"]] = impact_value
 
                 newHeadline = NewsItem(
                     company=headline["company"],
