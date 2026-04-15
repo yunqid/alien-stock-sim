@@ -550,7 +550,9 @@ function switchCompany(newCompany) {
 window.onload= function () {
     // Updates the leaderboard periodically
     refreshLeaderboard();
-    setInterval(refreshLeaderboard, LEADERBOARD_POLL_MS, fetchStockStats, fetchUserStats);
+    setInterval(refreshLeaderboard, LEADERBOARD_POLL_MS);
+    setInterval(fetchStockStats, LEADERBOARD_POLL_MS);
+    setInterval(fetchUserStats, LEADERBOARD_POLL_MS);
 
     // Add event listeners to each of the drop down option
     document.querySelectorAll('.news_filter_option').forEach(option => {
