@@ -77,11 +77,8 @@ WSGI_APPLICATION = 'webapps.wsgi.application'
 
 DATABASES = {
     'default': {
-        'OPTIONS': {'charset': 'utf8mb4'},
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'django',
-        'USER': 'team4',
-        'PASSWORD': 'alienstocksim',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -142,10 +139,7 @@ ASGI_APPLICATION = "webapps.asgi.application"
 # Switch to redis
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("localhost", 6379)],
-        },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     }
 }
 
@@ -174,11 +168,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
-
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-CSRF_TRUSTED_ORIGINS = ['https://team4.cmu-webapps.com']
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
 
 # This is needed so the cache doesn't restart
 CACHES = {
