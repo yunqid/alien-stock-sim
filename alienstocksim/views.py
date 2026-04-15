@@ -419,7 +419,7 @@ def messages_thread_poll(request, username):
     return JsonResponse({"messages": messages_out})
 
 
-
+# Handels all requests regading trading of stocks
 @login_required
 @require_POST
 def trade_stock(request):
@@ -432,6 +432,7 @@ def trade_stock(request):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({"error": "invalid_json"}, status=400)
 
+    # Getting some basic information regarding the transaction
     company = (data.get("company") or "").strip()
     if not company or len(company) > 200:
         return JsonResponse({"error": "invalid_company"}, status=400)
@@ -480,7 +481,7 @@ def trade_stock(request):
                     company=company,
                 )
                 
-                remaining = cache.remaining if cache else 1000
+                remaining = cache.remaining if cache else 1000 # Defaults to 1000
 
                 # Dealing with the buy/sell actions
                 if action == "buy":
@@ -531,7 +532,7 @@ def trade_stock(request):
             }
         )
 
-
+# Returns information regarding the stock specifically
 @login_required
 def stock_stats(request, company):
     company = (company or "").strip()
@@ -552,6 +553,7 @@ def stock_stats(request, company):
         "shares_remaining": shares_remaining,
     })
 
+# Returns information regarding the user specifically
 @login_required
 def user_stats(request, company):
     company = (company or "").strip()
