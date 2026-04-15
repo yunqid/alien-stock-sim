@@ -1,38 +1,37 @@
 # Alien Stock Sim (s26_team_4)
 
-Team Members: Davis Germain, Leyu Ding, Yunqi Dong
+**Team:** Davis Germain, Leyu Ding, Yunqi Dong  
 
-**Alien Stock Sim** is a browser-based paper-trading game built for CMU’s web applications course. Players sign in with Google, trade shares in fictional companies whose prices react to synthetic news and (lightly) to real market signals, and compete on a global net-worth leaderboard. Direct messaging is available between mutually following players.
+Course project for CMU web apps (Spring 2026). It’s a fake stock game: sign in with Google, buy and sell shares in made-up companies, watch prices move on a live chart, and try to climb the leaderboard. You can also follow other players and DM people once you follow each other.
 
-**Production deployment:** [https://team4.cmu-webapps.com](https://team4.cmu-webapps.com)
-
----
-
-## Features
-
-- **Google sign-in** via [django-allauth](https://docs.allauth.org/) (social account flow on the landing page).
-- **Live trading desk** (`/home`): multi-company ticker, [Chart.js](https://www.chartjs.org/) price chart, rolling news feed, buy/sell with confirmation modal, optional browser notifications for new DMs (service worker).
-- **Real-time transport**: [Django Channels](https://channels.readthedocs.io/) WebSocket at `/ws/alienstocksim/` pushes price ticks and headlines to all connected clients; HTTP views read last prices from Django’s cache layer (`alienstocksim.pricing`).
-- **Synthetic news**: batched headlines are generated with the **Google GenAI** API (Gemini, JSON mode), persisted as `NewsItem` rows, and applied as configurable percentage shocks to the in-game price engine.
-- **Market anchor**: periodically, percentage changes from **Alpha Vantage** “global quote” data for real symbols are blended into the simulation (mapped to fictional company names).
-- **Profiles** (`/profile`, `/profile/<username>`): liquid cash, live net worth (cash + marked-to-market holdings), holdings table with average cost, followers/following, follow/unfollow, user search (own profile), and a small “friends” leaderboard among the viewed user and accounts they follow.
-- **Direct messages** (`/messages/`, `/messages/<username>/`): only **mutual followers** may chat; read receipts via `read_at`; inbox sorted by latest activity; thread polling endpoint for incremental updates; nav unread badge via context processor + periodic JSON poll.
+**Live site:** [team4.cmu-webapps.com](https://team4.cmu-webapps.com)
 
 ---
 
-## Architecture
+## What it does
 
+- **Landing + auth:** Google OAuth through [django-allauth](https://docs.allauth.org/); unauthenticated visitors see the landing page, logged-in users go to `/home`.
+- **Trading desk (`/home`):** WebSocket feed at `/ws/alienstocksim/` drives the ticker and [Chart.js](https://www.chartjs.org/) chart. News lines scroll in the sidebar; trades go through a modal and hit `POST /trade/`.
+- **Prices:** The `StockConsumer` (Channels) simulates prices, mixes in occasional real-world quote *changes* from Alpha Vantage (mapped to our silly company names), and stores recent points in `PriceCache`. Last prices for HTTP are read from Django’s cache (`alienstocksim.pricing`).
+- **Headlines:** Batches of headlines come from the **Google GenAI** API (Gemini, JSON). They’re saved as `NewsItem` rows and nudge prices when they land—see **AI usage** below.
+- **Profiles:** Net worth, holdings, followers/following, follow/unfollow, search on your own profile, and a small leaderboard among you and people you follow.
+- **Messages:** Inbox and threads under `/messages/`; only **mutual followers** can chat. Unread counts power the nav badge; threads can poll for new messages; there’s a service worker for optional DM notifications.
 
-| Layer                | Responsibility                                                                                                         |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `**webapps/`**       | Django project: `settings.py`, root `urls.py`, `asgi.py` (HTTP + WebSocket routing), `wsgi.py`.                        |
-| `**alienstocksim/**` | Main app: models, views, Channel consumer, WebSocket URL routing, static assets, templates, forms, context processors. |
+---
 
+## AI usage
 
-High-level request flow:
+**1. In the product**  
+Headlines are generated server-side with **Google Gemini** (`gemini-2.5-flash`) via `generate_headline_batch()` in `views.py`. The model returns JSON; we parse it, save `NewsItem` records, and the WebSocket consumer applies severity/direction as percentage moves on the simulated prices. You need valid Google GenAI credentials (see [Google Gen AI SDK](https://googleapis.github.io/python-genai/) docs) in the environment your app runs in.
 
-- **HTTP**: Django’s ASGI stack serves normal views (templates + JSON endpoints for trading, stats, leaderboard, messages).
-- **WebSocket**: `AuthMiddlewareStack` → `alienstocksim.routing` → `StockConsumer`, which runs asyncio loops for headline generation and price simulation and uses the channel layer to **broadcast** `stock_price` and `news_headline` events to the `news_feed` group.
+**2. During development**  
+Team members used AI-assisted tools (e.g. coding assistants, chat models) for brainstorming, boilerplate, debugging help. **We reviewed, edited, and own the final code and text**; nothing ships without human pass. 
+
+---
+
+## How it’s put together
+
+Django lives under `webapps/` (`settings`, root `urls`, `asgi.py` for HTTP + WebSockets). Game logic, templates, and static files live in `alienstocksim/`. Regular requests hit Django views; the trading UI opens a WebSocket to `StockConsumer`, which runs the price loop, headline loop, and broadcasts on the `news_feed` channel group.
 
 ```mermaid
 flowchart LR
@@ -40,176 +39,76 @@ flowchart LR
     UI[Templates + home.js]
   end
   subgraph server [Django ASGI]
-    HTTP[Django HTTP app]
+    HTTP[Django HTTP]
     WS[StockConsumer]
-    DB[(Database)]
-    CACHE[(Django cache / last prices)]
+    DB[(DB)]
+    CACHE[(Cache / last price)]
   end
-  UI -->|REST / forms| HTTP
-  UI -->|wss://.../ws/alienstocksim/| WS
+  UI --> HTTP
+  UI -->|WebSocket| WS
   HTTP --> DB
   HTTP --> CACHE
   WS --> DB
   WS --> CACHE
-  WS -->|Gemini| GenAI[Google GenAI API]
-  WS -->|quotes| AV[Alpha Vantage API]
+  WS --> Gemini[GenAI API]
+  WS --> AV[Alpha Vantage]
 ```
 
-
-
----
-
-## Technology stack
-
-
-| Area                       | Choice                                                                                                                           |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Framework                  | **Django ≥ 5.2**                                                                                                                 |
-| Async server               | **Daphne** (ASGI), with `channels` in `INSTALLED_APPS`                                                                           |
-| Real-time                  | **Django Channels** (`AsyncWebsocketConsumer`), `websockets` / channel layers                                                    |
-| Auth                       | **django-allauth** + **Google** provider; `django.contrib.sites` (`SITE_ID = 1`)                                                 |
-| Database (default in repo) | **SQLite** (`db.sqlite3`)                                                                                                        |
-| Optional DB driver         | **mysqlclient** (listed in requirements for MySQL-capable deployments)                                                           |
-| AI headlines               | **google-genai** client, `gemini-2.5-flash`, structured JSON output                                                              |
-| External quotes            | **requests** + Alpha Vantage HTTP API                                                                                            |
-| Front-end chart            | **Chart.js** (CDN on home page)                                                                                                  |
-| Config                     | `**python-dotenv`** (`load_dotenv` in settings); `**configparser**` reads `**config.ini**` for `SECRET_KEY` (file is gitignored) |
-
+**Stack (short):** Django 5.2+, **Daphne** for ASGI, **Channels** for WebSockets, **allauth** + Google, default **SQLite** in dev (`mysqlclient` in `requirements.txt` if you point Django at MySQL), **requests** for Alpha Vantage, **google-genai** for headlines, **python-dotenv** + a gitignored `config.ini` for the Django secret.
 
 ---
 
-## Domain model (summary)
+## Models 
 
-- `**Profile**`: one-to-one with `User`; `ManyToManyField` to self for followers; `liquid_money` (integer cents-style whole dollars in logic paths that format as currency).
-- `**StockEntry**`: per `(profile, company)` holding with `quantity`, `cost_basis_paid`, optional `price_cache` FK; `unique_together` on `(profile, company)`.
-- `**PriceCache**`: per company, `datapoints` JSON (timestamp + price in cents), `remaining` shares pool for the tradable float.
-- `**NewsItem**`: stored headlines/blurbs/direction/severity for history and replay to new WebSocket clients.
-- `**DirectMessage**`: sender/recipient FKs to `User`, `body`, `created_at`, `read_at`; indexes support inbox and unread queries.
+- `Profile` — one-to-one with `User`, follower graph, starting cash.
+- `StockEntry` — holdings per company; `cost_basis_paid` for average cost; unique on `(profile, company)`.
+- `PriceCache` — JSON price history and remaining float per company.
+- `NewsItem` — persisted headlines for history and for clients that connect late.
+- `DirectMessage` — DMs with `read_at` for unread/read.
 
-Trading (`POST /trade/`) uses `**select_for_update()**` inside `**transaction.atomic()**` with retries on SQLite lock errors to reduce race conditions on balances, quantities, and the shared float.
+Trades use `select_for_update()` inside `transaction.atomic()` with retries on SQLite lock errors.
 
----
-
-## Fictional companies and ticker map
-
-In-game names are decoupled from real tickers in `StockConsumer.COMPANY_MAP` (e.g. **Pear** ← AAPL-style quote, **Googlin**, **Fire Rage Inc.**, **BenefitCo**). The primary chart/trading default in the static client is aligned with `**TRADE_COMPANY`** in `alienstocksim/pricing.py` (keep these in sync when changing the default ticker).
+Fictional tickers map to real symbols in `StockConsumer.COMPANY_MAP` (e.g. Pear / Googlin / …). Keep `TRADE_COMPANY` in `alienstocksim/pricing.py` aligned with the default company in `static/alienstocksim/home.js` if you change defaults.
 
 ---
 
-## Project layout
+## Repo layout
 
 ```
 manage.py
 requirements.txt
-config.ini          # not in git; required locally for SECRET_KEY (see below)
-webapps/
-  settings.py
-  urls.py
-  asgi.py
-  wsgi.py
-alienstocksim/
-  models.py
-  views.py
-  consumers.py
-  routing.py
-  pricing.py
-  forms.py
-  context_processors.py
-  admin.py
-  static/alienstocksim/   # CSS, JS (home, profile, messages, landing, theme)
-  templates/alienstocksim/
-sw.js                     # service worker (DM notifications)
+config.ini          # gitignored — Django secret (see setup)
+webapps/            # project: settings, urls, asgi, wsgi
+alienstocksim/      # app: models, views, consumers, routing, static, templates
+sw.js               # service worker (notifications)
 ```
 
 ---
 
-## Local setup
-
-### 1. Python environment
+## Running it locally
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configuration files
-
-Create `**config.ini**` at the repository root (this path is gitignored). Minimal example:
+Add `config.ini` at the repo root:
 
 ```ini
 [Django]
-secret = your-django-secret-key-here
+secret = <your-secret-key>
 ```
 
-Create `**.env**` in the project root if your environment needs it (also gitignored). The app uses `**google.genai.Client()**` for headline generation; configure credentials the way your deployment expects (e.g. API key or ADC as per [Google Gen AI SDK](https://googleapis.github.io/python-genai/) documentation).
-
-Configure **django-allauth** Google OAuth in the Django admin (Sites, social applications) as usual for local `localhost` and production hosts.
-
-### 3. Database
+Run migrations, then start with **Daphne** (WebSockets won’t behave like production on plain `runserver`):
 
 ```bash
 python manage.py migrate
-python manage.py createsuperuser   # optional, for /admin/
-```
-
-The default configuration uses **SQLite**. `requirements.txt` includes **mysqlclient** for teams that point `DATABASES['default']` at MySQL on a shared host.
-
-### 4. Run the app
-
-Because the trading desk relies on **WebSockets**, use an **ASGI** server (not only `runserver` in older habits):
-
-```bash
 daphne -b 0.0.0.0 -p 8000 webapps.asgi:application
 ```
 
-For quick checks, Django’s dev server can still serve many HTTP routes, but WebSocket + Channels behavior is intended to run under **Daphne** (or another ASGI server).
+Configure Google OAuth in Django admin (Sites + social app) for localhost and production. Add GenAI credentials for your machine. For a static build: `python manage.py collectstatic`.
 
-Collect static files for production-style serving:
-
-```bash
-python manage.py collectstatic
-```
-
----
-
-## Important configuration notes
-
-- `**ALLOWED_HOSTS**` in `webapps/settings.py` includes `**team4.cmu-webapps.com**` alongside local dev hosts.
-- `**CHANNEL_LAYERS**` uses `**InMemoryChannelLayer**`. That is fine for a single process; for multi-worker or multi-machine deployments, switch to **Redis** (the repo already lists `**channels_redis`**) so WebSocket groups and broadcasts stay consistent.
-- `**DEBUG**` is currently `**True**` in settings; tighten this and `SECRET_KEY` handling for any long-lived public deployment.
-- **Last-traded prices** for HTTP views are stored in Django’s **default cache** (`pricing.set_last_price` / `get_last_price`). With default settings this is process-local memory cache—consistent with a single Daphne process, but worth revisiting if you scale out.
-
----
-
-## API surface (selected)
+**Deploy notes:** `ALLOWED_HOSTS` includes `team4.cmu-webapps.com`. Channel layer is in-memory—fine for one process; use Redis + `channels_redis` if you run multiple workers. `DEBUG` is `True` in settings; turn it off for real production. Price cache defaults to local memory—same caveat if you scale out.
 
 
-| Method    | Path                                                | Purpose                                                           |
-| --------- | --------------------------------------------------- | ----------------------------------------------------------------- |
-| GET       | `/`                                                 | Landing; redirects authenticated users to `/home`.                |
-| GET       | `/home`                                             | Trading desk (login required).                                    |
-| GET/POST  | `/profile`, `/profile/<username>`                   | Profile and follow graph.                                         |
-| POST      | `/follow/`                                          | Follow or unfollow (`username`, `action`, optional `next`).       |
-| GET       | `/messages/`, `/messages/<username>/`               | Inbox and thread (mutual followers).                              |
-| GET       | `/messages/<username>/poll/`                        | JSON poll for new messages after `after_id`.                      |
-| GET       | `/unread_messages/`                                 | JSON unread count + preview for nav badge.                        |
-| POST      | `/trade/`                                           | JSON body: `company`, `action` (`buy`/`sell`), `price`, `amount`. |
-| GET       | `/stock_stats/<company>/`, `/user_stats/<company>/` | Aggregate and per-user stats for the desk.                        |
-| GET       | `/api/leaderboard/`                                 | JSON global leaderboard rows.                                     |
-| WebSocket | `/ws/alienstocksim/`                                | Live prices, headlines, price history payloads.                   |
-
-
-CSRF applies to session-based POSTs (e.g. messages, follow); the trade endpoint expects a valid session and appropriate headers from the front end’s `fetch` usage.
-
----
-
-## Team
-
-**CMU Web Apps — Team 4** (Spring 2026). Repository: `s26_team_4`.
-
----
-
-## License / course use
-
-This repository is maintained for an academic web applications project. Third-party libraries are subject to their respective licenses.
