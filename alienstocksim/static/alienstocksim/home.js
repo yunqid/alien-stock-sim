@@ -190,6 +190,7 @@ function updateTradeButtonsDisabled() {
     // Disables the button if the corresponding action can't be done
     buyBtn.disabled = !canAffordOneShare();
     sellBtn.disabled = !canSellOneShare();
+    //BUG: DOES NOT DISABLE IF THERE ARE NO MORE SHARES TO BE BOUGHT
 }
 
 // Not sure if the below is ever needed since the user can't physically buy or sell greater than they can
