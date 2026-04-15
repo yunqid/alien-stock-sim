@@ -37,6 +37,12 @@ Debugging JS code
 
 **Yunqi AI Usage**
 
+I used AI to learn how to design and implement the direct messaging system and unread message logic.
+
+learning how to make leaderboard functionality, including querying, ranking users, and optimizing database queries.
+
+Debugging Django, template, and backend-related issues encountered during development.
+
 **Leyu AI Usage**
 
 Content wise, I used AI to learn how to setup websockets and how to make API calls, I also used AI to figure out 
