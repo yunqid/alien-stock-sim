@@ -131,6 +131,8 @@ class StockConsumer(AsyncWebsocketConsumer):
                 total_pct = remaining_pcts[name] + holdings_pct + noise + news_pct
                 # Applying the change to the stock price
                 prices[name] = round(prices[name] * (1 + total_pct), 2)
+                # Applying a lowercap
+                if prices[name] < 10: prices[name] = 10
 
                 # Caching the new stock price
                 await asyncio.to_thread(self._append_to_cache, name, prices[name])
