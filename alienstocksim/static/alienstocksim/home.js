@@ -557,24 +557,3 @@ async function enableNotifications() {
     }
 }
 
-let lastUnreadCount = 0;
-
-async function pollUnreadMessages() {
-    if (Notification.permission !== 'granted' || !navigator.serviceWorker.controller) return;
-
-    const res = await fetch('/unread_messages/');
-    const data = await res.json();
-
-    if (data.unread_count > lastUnreadCount && data.sender) {
-        navigator.serviceWorker.controller.postMessage({
-            type: 'NEW_MESSAGE',
-            sender: data.sender,
-            preview: data.preview,
-            url: data.thread_url,
-        });
-    }
-
-    lastUnreadCount = data.unread_count;
-}
-
-setInterval(pollUnreadMessages, 15000);
