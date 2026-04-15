@@ -3,7 +3,6 @@ import asyncio
 import requests
 import random
 import time
-import redis
 from channels.generic.websocket import AsyncWebsocketConsumer
 from alienstocksim.views import generate_headline_batch
 from alienstocksim.pricing import set_last_price, TRADE_COMPANY, get_last_price
@@ -17,11 +16,6 @@ COMPANY_MAP = {
     "FOXA": "Fire Rage Inc.",
     "COST": "BenefitCo",
 }
-
-r = redis.Redis()
-
-def acquire_lock():
-    return r.set("stock_engine_lock", "locked", nx=True, ex=10)
 
 class StockConsumer(AsyncWebsocketConsumer):
     connected_count = 0
@@ -72,10 +66,6 @@ class StockConsumer(AsyncWebsocketConsumer):
                     "severity": str(item.severity)
                 }
             }))
-
-        # Start the chart
-        if acquire_lock():
-            StockConsumer.stock_task = asyncio.create_task(self.send_stock_data())
 
 
     # Disconnecting from the websocket
