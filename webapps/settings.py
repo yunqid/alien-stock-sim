@@ -169,3 +169,11 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+
+# This is needed so the cache doesn't restart
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "alienstocksim_cache",
+    }
+}
