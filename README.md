@@ -107,6 +107,7 @@ Fictional tickers map to real symbols in `StockConsumer.COMPANY_MAP` (e.g. Pear 
 manage.py
 requirements.txt
 config.ini          # gitignored — Django secret (see setup)
+.env                # gitignored - Stores Gemini & Google keys
 webapps/            # project: settings, urls, asgi, wsgi
 alienstocksim/      # app: models, views, consumers, routing, static, templates
 sw.js               # service worker (notifications)
@@ -122,11 +123,18 @@ source venv/bin/activate    # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Add `config.ini` at the repo root:
+Add `config.ini` and `.env` at the repo root:
 
 ```ini
 [Django]
 secret = <your-secret-key>
+```
+
+``` env
+GEMINI_API_KEY="<your-secret-key>"
+
+GOOGLE_CLIENT_ID="<your-client-id>"
+GOOGLE_CLIENT_SECRET="<your-secret-key>"
 ```
 
 Run migrations, then start with **Daphne** (WebSockets won’t behave like production on plain `runserver`):
