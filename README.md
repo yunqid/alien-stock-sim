@@ -24,8 +24,18 @@ Course project for CMU web apps (Spring 2026). It’s a fake stock game: sign in
 **1. In the product**  
 Headlines are generated server-side with **Google Gemini** (`gemini-2.5-flash`) via `generate_headline_batch()` in `views.py`. The model returns JSON; we parse it, save `NewsItem` records, and the WebSocket consumer applies severity/direction as percentage moves on the simulated prices. You need valid Google GenAI credentials (see [Google Gen AI SDK](https://googleapis.github.io/python-genai/) docs) in the environment your app runs in.
 
-**2. During development**  
-Team members used AI-assisted tools (e.g. coding assistants, chat models) for brainstorming, boilerplate, debugging help. **We reviewed, edited, and own the final code and text**; nothing ships without human pass. 
+**Davis AI Usage**
+I used AI for 3 major purposes:
+Understanding how to use various APIs, as well as learning how to use APIs as a whole,
+since this was my first project using them.
+
+Relearning the more intricate features of JS (and service workers), since I did not know JS before this class.
+
+Debugging JS code
+
+**Yunqi AI Usage**
+
+**Leyu AI Usage**
 
 ---
 
