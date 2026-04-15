@@ -11,7 +11,7 @@ from django.db.models import Sum
 
 # Getting the global channel layer
 from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+
 
 channel_layer = get_channel_layer()
 
@@ -108,7 +108,7 @@ class StockConsumer(AsyncWebsocketConsumer):
                         total_pct = await self.get_stock_price(symbol)
                         # Divide the full change into equal slices
                         # Multiplied so the user can actually see the change
-                        remaining_pcts[name] = total_pct / ticks_to_spread 
+                        remaining_pcts[name] = (total_pct / ticks_to_spread) * 10 
                     except:
                         remaining_pcts[name] = 0 # Just in case we get rate limited
                 last_api_call = now
@@ -135,12 +135,12 @@ class StockConsumer(AsyncWebsocketConsumer):
                 prices[name] = round(prices[name] * (1 + total_pct), 2)
                 # Applying a lowercap
                 if prices[name] < 10: prices[name] = 10
-
+                print(remaining_pcts[name])
                 # Caching the new stock price
                 await asyncio.to_thread(self._append_to_cache, name, prices[name])
                 await asyncio.to_thread(set_last_price, name, prices[name])
 
-                async_to_sync(channel_layer.group_send)(
+                await channel_layer.group_send(
                     "news_feed",
                     {
                         "type": "broadcast_price",
