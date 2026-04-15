@@ -19,7 +19,7 @@ from django.conf import settings
 import time
 from django.db.utils import OperationalError
 
-
+# Needed to set as a client before making queries with gemini
 client = genai.Client()
 
 def landing_action(request):
@@ -61,10 +61,10 @@ def generate_headline_batch():
             response_mime_type="application/json",
         )
     )
-    
+    # actually returns the json
     return json.loads(response.text)
 
-
+# function used to set the path to the service worker and set its type to js
 def serve_sw(request):
     path = os.path.join(settings.BASE_DIR, 'sw.js')
     response = FileResponse(open(path, 'rb'), content_type = 'application/javascript')
@@ -74,16 +74,19 @@ def serve_sw(request):
 
 @login_required
 def unread_message_count(request):
+    #filters to get all the latest messages
     latest = (
         DirectMessage.objects.filter(recipient=request.user, read_at__isnull=True)
         .select_related("sender")
         .order_by("-created_at")
         .first()
     )
+    #counts the number of messages unread
     count = DirectMessage.objects.filter(
         recipient=request.user, read_at__isnull=True
     ).count()
 
+    # returns the JSON response showing the unread message count, sender, etc.
     return JsonResponse({
         "unread_count": count,
         "sender": latest.sender.username if latest else None,
