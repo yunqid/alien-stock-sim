@@ -47,6 +47,7 @@
             </ul>
             {% endif %}
 
+            <div id="inbox-thread-root" data-poll-url="{% url 'messages_inbox_poll' %}">
             {% if thread_rows %}
             <ul class="thread-list">
                 {% for row in thread_rows %}
@@ -71,8 +72,10 @@
             {% else %}
             <p class="messages-empty">No mutual friends yet. Follow someone and ask them to follow you back to start messaging.</p>
             {% endif %}
+            </div>
         </div>
     </div>
     <script src="{% static 'alienstocksim/dm_nav_badge.js' %}"></script>
+    <script src="{% static 'alienstocksim/messages_inbox_poll.js' %}"></script>
 </body>
 </html>

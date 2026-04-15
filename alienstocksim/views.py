@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
+from django.utils import formats, timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
@@ -105,10 +105,44 @@ def _mutual_friends_qs(profile: Profile):
     )
 
 
+def _inbox_thread_rows_for_user(user):
+    """Mutual DM threads: preview, last activity, unread counts (same ordering as inbox page)."""
+    me, _ = Profile.objects.get_or_create(user=user)
+    mutual = list(_mutual_friends_qs(me))
+    thread_rows = []
+    for p in mutual:
+        u = p.user
+        last = (
+            DirectMessage.objects.filter(
+                Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        unread_count = DirectMessage.objects.filter(
+            sender=u, recipient=user, read_at__isnull=True
+        ).count()
+        preview = ""
+        if last:
+            preview = (last.body[:100] + "…") if len(last.body) > 100 else last.body
+        thread_rows.append(
+            {
+                "username": u.username,
+                "last_preview": preview,
+                "last_at": last.created_at if last else None,
+                "unread_count": unread_count,
+            }
+        )
+    with_time = [r for r in thread_rows if r["last_at"]]
+    no_time = [r for r in thread_rows if not r["last_at"]]
+    with_time.sort(key=lambda r: r["last_at"], reverse=True)
+    return with_time + no_time
+
+
 def net_worth_live(profile):
     """
     Net worth from DB: liquid_money + sum(quantity * cached live price) per position.
-    Used for profile summary and all leaderboards (no dummy portfolio).
+    Used for profile summary and all leaderboards.
     """
     total = profile.liquid_money
     for entry in profile.stocks.filter(quantity__gt=0):
@@ -294,38 +328,28 @@ def follow_toggle(request):
 
 @login_required
 def messages_inbox(request):
-    me, _ = Profile.objects.get_or_create(user=request.user)
-    mutual = list(_mutual_friends_qs(me))
-    thread_rows = []
-    for p in mutual:
-        u = p.user
-        last = (
-            DirectMessage.objects.filter(
-                Q(sender=request.user, recipient=u) | Q(sender=u, recipient=request.user)
-            )
-            .order_by("-created_at")
-            .first()
-        )
-        unread_count = DirectMessage.objects.filter(
-            sender=u, recipient=request.user, read_at__isnull=True
-        ).count()
-        thread_rows.append(
-            {
-                "username": u.username,
-                "last_preview": (last.body[:100] + "…")
-                if last and len(last.body) > 100
-                else (last.body if last else ""),
-                "last_at": last.created_at if last else None,
-                "unread_count": unread_count,
-            }
-        )
-    with_time = [r for r in thread_rows if r["last_at"]]
-    no_time = [r for r in thread_rows if not r["last_at"]]
-    with_time.sort(key=lambda r: r["last_at"], reverse=True)
-    thread_rows = with_time + no_time
-
+    thread_rows = _inbox_thread_rows_for_user(request.user)
     context = {"thread_rows": thread_rows}
     return render(request, "alienstocksim/messages_inbox.html", context)
+
+
+@login_required
+def messages_inbox_poll(request):
+    rows = _inbox_thread_rows_for_user(request.user)
+    threads = []
+    for r in rows:
+        threads.append(
+            {
+                "username": r["username"],
+                "last_preview": r["last_preview"],
+                "last_at": formats.date_format(r["last_at"], "DATETIME_FORMAT")
+                if r["last_at"]
+                else None,
+                "unread_count": r["unread_count"],
+                "has_last": bool(r["last_at"]),
+            }
+        )
+    return JsonResponse({"threads": threads})
 
 
 @login_required

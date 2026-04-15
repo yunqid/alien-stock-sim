@@ -26,6 +26,7 @@ urlpatterns = [
     path('profile/<str:username>', views.profile_action, name='profile_user'),
     path('follow/', views.follow_toggle, name='follow_toggle'),
     path('messages/', views.messages_inbox, name='messages_inbox'),
+    path('messages/inbox/poll/', views.messages_inbox_poll, name='messages_inbox_poll'),
     path('messages/<str:username>/', views.messages_thread, name='messages_thread'),
     path("trade/", views.trade_stock, name="trade_stock"),
     path("stock_stats/<str:company>/", views.stock_stats, name="stock_stats"),
