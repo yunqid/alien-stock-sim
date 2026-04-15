@@ -54,7 +54,7 @@ flowchart LR
   WS --> AV[Alpha Vantage]
 ```
 
-**Stack (short):** Django 5.2+, **Daphne** for ASGI, **Channels** for WebSockets, **allauth** + Google, default **SQLite** in dev (`mysqlclient` in `requirements.txt` if you point Django at MySQL), **requests** for Alpha Vantage, **google-genai** for headlines, **python-dotenv** + a gitignored `config.ini` for the Django secret.
+**Stack:** Django 5.2+, **Daphne** for ASGI, **Channels** for WebSockets, **allauth** + Google, default **SQLite** in dev (`mysqlclient` in `requirements.txt` if you point Django at MySQL), **requests** for Alpha Vantage, **google-genai** for headlines.
 
 ---
 
@@ -108,7 +108,5 @@ daphne -b 0.0.0.0 -p 8000 webapps.asgi:application
 ```
 
 Configure Google OAuth in Django admin (Sites + social app) for localhost and production. Add GenAI credentials for your machine. For a static build: `python manage.py collectstatic`.
-
-**Deploy notes:** `ALLOWED_HOSTS` includes `team4.cmu-webapps.com`. Channel layer is in-memory—fine for one process; use Redis + `channels_redis` if you run multiple workers. `DEBUG` is `True` in settings; turn it off for real production. Price cache defaults to local memory—same caveat if you scale out.
 
 
