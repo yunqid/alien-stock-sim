@@ -9,6 +9,12 @@ from alienstocksim.pricing import set_last_price, TRADE_COMPANY, get_last_price
 from alienstocksim.models import NewsItem, PriceCache, StockEntry
 from django.db.models import Sum
 
+# Getting the global channel layer
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
+channel_layer = get_channel_layer()
+
 # Maps the stock ticker to the "fake" companies
 COMPANY_MAP = {
     "AAPL": "Pear",
@@ -133,7 +139,8 @@ class StockConsumer(AsyncWebsocketConsumer):
                 # Caching the new stock price
                 await asyncio.to_thread(self._append_to_cache, name, prices[name])
                 await asyncio.to_thread(set_last_price, name, prices[name])
-                await self.channel_layer.group_send(
+
+                async_to_sync(channel_layer.group_send)(
                     "news_feed",
                     {
                         "type": "broadcast_price",

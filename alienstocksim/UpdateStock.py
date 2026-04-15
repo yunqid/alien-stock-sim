@@ -1,7 +1,7 @@
 import redis
 import asyncio
 import threading
-from consumers import StockConsumer
+from alienstocksim.consumers import StockConsumer
 
 r = redis.Redis()
 
