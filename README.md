@@ -25,7 +25,9 @@ Course project for CMU web apps (Spring 2026). It’s a fake stock game: sign in
 Headlines are generated server-side with **Google Gemini** (`gemini-2.5-flash`) via `generate_headline_batch()` in `views.py`. The model returns JSON; we parse it, save `NewsItem` records, and the WebSocket consumer applies severity/direction as percentage moves on the simulated prices. You need valid Google GenAI credentials (see [Google Gen AI SDK](https://googleapis.github.io/python-genai/) docs) in the environment your app runs in.
 
 **Davis AI Usage**
+
 I used AI for 3 major purposes:
+
 Understanding how to use various APIs, as well as learning how to use APIs as a whole,
 since this was my first project using them.
 
@@ -36,6 +38,17 @@ Debugging JS code
 **Yunqi AI Usage**
 
 **Leyu AI Usage**
+
+Content wise, I used AI to learn how to setup websockets and how to make API calls, I also used AI to figure out 
+how to get everything running concurrently when deployed (extreme crunch time), and stuff relating to
+channels and layers, some of the more minor content stuff that I used AI for was the popup modal.
+
+AI was also used a lot when debugging in general, especially when it comes to more obscure errors like
+the cache resetting to it's default value constantly when deployed, I learned a lot of neat coding
+tricks while using AI to debug like using the ? and ?? operator. 
+
+Lastly, I used AI to figure out what API to use. At first I was using MASSIVE (I think they rebranded to something else),
+but they were pretty rate limited I think, so I used AI to find an alternative that has more free calls.
 
 ---
 
