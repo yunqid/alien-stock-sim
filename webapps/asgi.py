@@ -18,9 +18,11 @@ from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
 import alienstocksim.routing
 
+
 # Runs the update stock loop
 from alienstocksim.UpdateStock import BeginStockUpdate
 BeginStockUpdate()
+
 
 # Tells the channels what to do based on connection
 application = ProtocolTypeRouter({

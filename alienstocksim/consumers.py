@@ -81,7 +81,7 @@ class StockConsumer(AsyncWebsocketConsumer):
         self.running = False
 
     # Sending stock data
-    async def send_stock_data(self, interval=10):
+    async def send_stock_data(self, interval=10): 
         # Gets the latest price for each company
         prices = {
             name: await asyncio.to_thread(get_last_price, name)
