@@ -108,7 +108,10 @@ class StockConsumer(AsyncWebsocketConsumer):
                         total_pct = await self.get_stock_price(symbol)
                         # Divide the full change into equal slices
                         # Multiplied so the user can actually see the change
-                        remaining_pcts[name] = (total_pct / ticks_to_spread) * 10 
+                        # Line below was previously: 
+                        # remaining_pcts[name] = (total_pct / ticks_to_spread) * 10
+                        # But this caused explosion
+                        remaining_pcts[name] = (total_pct / 100) / ticks_to_spread 
                     except:
                         remaining_pcts[name] = 0 # Just in case we get rate limited
                 last_api_call = now
@@ -125,17 +128,44 @@ class StockConsumer(AsyncWebsocketConsumer):
             for symbol, name in COMPANY_MAP.items():
                 # Noise from [-0.5%, 0.5%]
                 noise = random.uniform(-0.005, 0.005)
+
                 # Percent change caused by user action
                 holdings_pct = delta[name] * 0.001
+
                 # Percent change caused by the news headline
                 news_pct = StockConsumer.news_impact.pop(name, 0)
+
+                # decay so it doesn't compound forever 
+                tick_pct = remaining_pcts[name]
+                remaining_pcts[name] *= 0.9 
+
+                # Setting bounds for each component:
+                # API Influence
+                tick_pct = max(min(tick_pct, 0.02), -0.02)
+
+                # User Trades Influence
+                holdings_pct = max(min(holdings_pct, 0.02), -0.02)
+
+                # News Influence
+                news_pct = max(min(news_pct, 0.1), -0.1)  
+
+                # Noise Influence (technically we don't need this, but
+                # it doesnt hurt to be cautious...)
+                noise = max(min(noise, 0.005), -0.005)
+
                 # Adding up the total change
-                total_pct = remaining_pcts[name] + holdings_pct + noise + news_pct
+                total_pct = tick_pct + holdings_pct + noise + news_pct
+
                 # Applying the change to the stock price
                 prices[name] = round(prices[name] * (1 + total_pct), 2)
+
                 # Applying a lowercap
                 if prices[name] < 10: prices[name] = 10
-                print(remaining_pcts[name])
+
+                # Applying an upper cap
+                if prices[name] > 100000: prices[name] = 100000
+
+                
                 # Caching the new stock price
                 await asyncio.to_thread(self._append_to_cache, name, prices[name])
                 await asyncio.to_thread(set_last_price, name, prices[name])
@@ -233,7 +263,7 @@ class StockConsumer(AsyncWebsocketConsumer):
                 headline = StockConsumer.headline_queue.pop()
 
                 # Calculating the impact of the headline
-                impact_value = {1: 0.05, 2: 0.1, 3: 0.2}.get(int(headline["severity"]), 0)
+                impact_value = {1: 0.02, 2: 0.5, 3: 0.1}.get(int(headline["severity"]), 0)
                 impact_value = impact_value if headline["direction"] == "up" else -impact_value
                 StockConsumer.news_impact[headline["company"]] = impact_value
 

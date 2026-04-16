@@ -7,7 +7,7 @@ r = redis.Redis()
 
 # Returns true if lock is set
 def acquire_lock():
-    return r.set("stock_engine_lock", "locked", nx=True, ex=10)
+    return r.set("stock_engine_lock", "locked", nx=True)
 
 def BeginStockUpdate():
     # Makes sure that only one instance of this is ran
