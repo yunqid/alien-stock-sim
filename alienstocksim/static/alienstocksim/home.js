@@ -545,6 +545,7 @@ function switchCompany(newCompany) {
 
     fetchStockStats();
     fetchUserStats();
+    getTradingSnapshot();
 }
 
 // The below is ran the moment the window is loaded
