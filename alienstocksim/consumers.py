@@ -130,7 +130,8 @@ class StockConsumer(AsyncWebsocketConsumer):
                 noise = random.uniform(-0.005, 0.005)
 
                 # Percent change caused by user action
-                holdings_pct = delta[name] * 0.001
+                # Changing this to be applied as a flat number
+                holdings_pct = delta[name] * 0.01
 
                 # Percent change caused by the news headline
                 news_pct = StockConsumer.news_impact.pop(name, 0)
@@ -144,7 +145,7 @@ class StockConsumer(AsyncWebsocketConsumer):
                 tick_pct = max(min(tick_pct, 0.02), -0.02)
 
                 # User Trades Influence
-                holdings_pct = max(min(holdings_pct, 0.02), -0.02)
+                # holdings_pct = max(min(holdings_pct, 0.02), -0.02)
 
                 # News Influence
                 news_pct = max(min(news_pct, 0.1), -0.1)  
@@ -154,10 +155,10 @@ class StockConsumer(AsyncWebsocketConsumer):
                 noise = max(min(noise, 0.005), -0.005)
 
                 # Adding up the total change
-                total_pct = tick_pct + holdings_pct + noise + news_pct
+                total_pct = tick_pct + noise + news_pct
 
                 # Applying the change to the stock price
-                prices[name] = round(prices[name] * (1 + total_pct), 2)
+                prices[name] = round(prices[name] * (1 + total_pct) + holdings_pct, 2)
 
                 # Applying a lowercap
                 if prices[name] < 10: prices[name] = 10
@@ -263,7 +264,7 @@ class StockConsumer(AsyncWebsocketConsumer):
                 headline = StockConsumer.headline_queue.pop()
 
                 # Calculating the impact of the headline
-                impact_value = {1: 0.02, 2: 0.5, 3: 0.1}.get(int(headline["severity"]), 0)
+                impact_value = {1: 0.0125, 2: 0.025, 3: 0.05}.get(int(headline["severity"]), 0)
                 impact_value = impact_value if headline["direction"] == "up" else -impact_value
                 StockConsumer.news_impact[headline["company"]] = impact_value
 
