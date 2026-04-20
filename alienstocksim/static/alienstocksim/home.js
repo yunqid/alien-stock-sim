@@ -544,6 +544,7 @@ function switchCompany(newCompany) {
     }));
 
     fetchStockStats();
+    getTradingSnapshot();
     await fetchUserStats(); // Waiting for price to update
 }
 
