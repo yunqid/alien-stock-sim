@@ -4,7 +4,7 @@
 
 Course project for CMU web apps (Spring 2026). It’s a fake stock game: sign in with Google, buy and sell shares in made-up companies, watch prices move on a live chart, and try to climb the leaderboard. You can also follow other players and DM people once you follow each other.
 
-**Live site:** [team4.cmu-webapps.com](https://team4.cmu-webapps.com)
+**Live site:** the course deployment (team4.cmu-webapps.com) has been retired. To see it running, follow **[Running it locally](#running-it-locally)** below.
 
 ---
 
@@ -117,33 +117,56 @@ sw.js               # service worker (notifications)
 
 ## Running it locally
 
+The repo ships a local settings module (`webapps/settings_local.py`) that swaps the
+production MySQL + Redis stack for **SQLite** and an **in-memory channel layer**, so no
+external services are needed. Everything below is copy-paste.
+
+**1. Install dependencies**
+
 ```bash
 python3 -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Add `config.ini` and `.env` at the repo root:
-
-```ini
-[Django]
-secret = <your-secret-key>
-```
-
-``` env
-GEMINI_API_KEY="<your-secret-key>"
-
-GOOGLE_CLIENT_ID="<your-client-id>"
-GOOGLE_CLIENT_SECRET="<your-secret-key>"
-```
-
-Run migrations, then start with **Daphne** (WebSockets won’t behave like production on plain `runserver`):
+**2. Create the two config files** (both are gitignored — templates are provided)
 
 ```bash
-python manage.py migrate
-daphne -b 0.0.0.0 -p 8000 webapps.asgi:application
+cp config.ini.example config.ini
+cp .env.example .env
+# then generate a Django secret key and paste it into config.ini:
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-Configure Google OAuth in Django admin (Sites + social app) for localhost and production. Add GenAI credentials for your machine. For a static build: `python manage.py collectstatic`.
+The app **boots and shows the landing page with `.env` left blank**. Filling in the keys
+unlocks the parts that call external services (see [What you need keys for](#what-you-need-keys-for)).
+
+**3. Migrate and run** (all commands use the local settings module)
+
+```bash
+export DJANGO_SETTINGS_MODULE=webapps.settings_local   # Windows: set DJANGO_SETTINGS_MODULE=webapps.settings_local
+python manage.py migrate
+python manage.py createcachetable
+python manage.py runserver 8000
+```
+
+Open **http://localhost:8000**. `runserver` here is Daphne (it's in `INSTALLED_APPS`), so
+WebSockets, the live price chart, and the news feed all work.
+
+### What you need keys for
+
+| Feature | Works without keys? | Key needed |
+|---|---|---|
+| Landing page, code, DB models | ✅ yes | — |
+| Live price chart + WebSocket feed | ✅ yes | — |
+| **Sign in with Google** → the trading desk | ❌ no | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env` |
+| AI news headlines | ❌ no | `GEMINI_API_KEY` in `.env` |
+| Real-world price nudges | optional | `ALPHAVANTAGE_API_KEY` in `.env` |
+
+To enable Google login, create a **Web application** OAuth client at
+[console.cloud.google.com/auth/clients](https://console.cloud.google.com/auth/clients),
+add `http://localhost:8000/accounts/google/login/callback/` as an authorized redirect URI,
+and put the client id/secret in `.env`. In Testing mode, add your Google account under
+**Audience → Test users**.
 
 

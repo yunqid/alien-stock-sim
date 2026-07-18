@@ -1,0 +1,5 @@
+; Copy this file to `config.ini` and set your own Django secret key.
+; Generate one with:
+;   python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+[Django]
+secret = replace-with-your-own-secret-key

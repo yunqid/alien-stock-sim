@@ -3,6 +3,7 @@ import asyncio
 import requests
 import random
 import time
+import os
 from channels.generic.websocket import AsyncWebsocketConsumer
 from alienstocksim.views import generate_headline_batch
 from alienstocksim.pricing import set_last_price, TRADE_COMPANY, get_last_price
@@ -209,7 +210,10 @@ class StockConsumer(AsyncWebsocketConsumer):
         params = {
             "function": "GLOBAL_QUOTE",
             "symbol": symbol,
-            "apikey": "D1PBWCAD52UWQ786"
+            # Free Alpha Vantage key; read from env so it isn't committed.
+            # Falls back to the public demo key if unset (get_stock_price
+            # is wrapped in try/except, so a bad key just skips the API nudge).
+            "apikey": os.environ.get("ALPHAVANTAGE_API_KEY", "demo")
         }
         response = await asyncio.to_thread(requests.get, url, params=params)
         data = response.json()

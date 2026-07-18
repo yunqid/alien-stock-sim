@@ -6,5 +6,7 @@ my_env
 .idea
 .vscode
 .env
-dq.sqlite3
+db.sqlite3
 config.ini
+.claude/
+__pycache__/
