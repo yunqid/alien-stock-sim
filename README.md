@@ -62,26 +62,11 @@ but they were pretty rate limited I think, so I used AI to find an alternative t
 
 Django lives under `webapps/` (`settings`, root `urls`, `asgi.py` for HTTP + WebSockets). Game logic, templates, and static files live in `alienstocksim/`. Regular requests hit Django views; the trading UI opens a WebSocket to `StockConsumer`, which runs the price loop, headline loop, and broadcasts on the `news_feed` channel group.
 
-```mermaid
-flowchart LR
-  subgraph client [Browser]
-    UI[Templates + home.js]
-  end
-  subgraph server [Django ASGI]
-    HTTP[Django HTTP]
-    WS[StockConsumer]
-    DB[(DB)]
-    CACHE[(Cache / last price)]
-  end
-  UI --> HTTP
-  UI -->|WebSocket| WS
-  HTTP --> DB
-  HTTP --> CACHE
-  WS --> DB
-  WS --> CACHE
-  WS --> Gemini[GenAI API]
-  WS --> AV[Alpha Vantage]
-```
+Data flow:
+
+- The **browser** (templates + `home.js`) makes normal HTTP requests to **Django views**, and opens a **WebSocket** to **`StockConsumer`**.
+- **Django views** read/write the **DB** and the **cache** (last price).
+- **`StockConsumer`** writes the **DB** and **cache**, calls the **Gemini API** for headlines, and calls **Alpha Vantage** for real-world quote changes.
 
 **Stack:** Django 5.2+, **Daphne** for ASGI, **Channels** for WebSockets, **allauth** + Google, default **SQLite** in dev (`mysqlclient` in `requirements.txt` if you point Django at MySQL), **requests** for Alpha Vantage, **google-genai** for headlines.
 
@@ -117,56 +102,37 @@ sw.js               # service worker (notifications)
 
 ## Running it locally
 
-The repo ships a local settings module (`webapps/settings_local.py`) that swaps the
-production MySQL + Redis stack for **SQLite** and an **in-memory channel layer**, so no
-external services are needed. Everything below is copy-paste.
-
-**1. Install dependencies**
+`webapps/settings_local.py` runs the app on **SQLite** + an **in-memory channel layer**, so no MySQL or Redis is needed. Copy-paste, in order:
 
 ```bash
+# 1. dependencies
 python3 -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-**2. Create the two config files** (both are gitignored — templates are provided)
-
-```bash
+# 2. config files (both gitignored; templates provided)
 cp config.ini.example config.ini
 cp .env.example .env
-# then generate a Django secret key and paste it into config.ini:
+# put a secret key in config.ini:
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
 
-The app **boots and shows the landing page with `.env` left blank**. Filling in the keys
-unlocks the parts that call external services (see [What you need keys for](#what-you-need-keys-for)).
-
-**3. Migrate and run** (all commands use the local settings module)
-
-```bash
+# 3. migrate and run (use the local settings module for every command)
 export DJANGO_SETTINGS_MODULE=webapps.settings_local   # Windows: set DJANGO_SETTINGS_MODULE=webapps.settings_local
 python manage.py migrate
 python manage.py createcachetable
 python manage.py runserver 8000
 ```
 
-Open **http://localhost:8000**. `runserver` here is Daphne (it's in `INSTALLED_APPS`), so
-WebSockets, the live price chart, and the news feed all work.
+Open **http://localhost:8000**. `runserver` is Daphne here (it's in `INSTALLED_APPS`), so WebSockets, the live price chart, and the news feed all work.
 
-### What you need keys for
+### API keys
 
-| Feature | Works without keys? | Key needed |
-|---|---|---|
-| Landing page, code, DB models | ✅ yes | — |
-| Live price chart + WebSocket feed | ✅ yes | — |
-| **Sign in with Google** → the trading desk | ❌ no | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in `.env` |
-| AI news headlines | ❌ no | `GEMINI_API_KEY` in `.env` |
-| Real-world price nudges | optional | `ALPHAVANTAGE_API_KEY` in `.env` |
+The app boots and shows the landing page, live chart, and WebSocket feed with `.env` left blank. Two features need keys added to `.env`:
 
-To enable Google login, create a **Web application** OAuth client at
-[console.cloud.google.com/auth/clients](https://console.cloud.google.com/auth/clients),
-add `http://localhost:8000/accounts/google/login/callback/` as an authorized redirect URI,
-and put the client id/secret in `.env`. In Testing mode, add your Google account under
-**Audience → Test users**.
+- **Sign in with Google** (to reach the trading desk) — `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+- **AI news headlines** — `GEMINI_API_KEY`.
+- Real-world price nudges are optional — `ALPHAVANTAGE_API_KEY`.
+
+To enable Google login: create a **Web application** OAuth client at [console.cloud.google.com/auth/clients](https://console.cloud.google.com/auth/clients), add `http://localhost:8000/accounts/google/login/callback/` as an authorized redirect URI, put the client id/secret in `.env`, and (in Testing mode) add your Google account under **Audience → Test users**.
 
 
